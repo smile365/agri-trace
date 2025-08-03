@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>指上农场 - 土鸡养殖追溯系统</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- 主页面 -->
+    <div id="mainPage" class="page active">
+    <!-- 顶部栏 -->
+    <header class="header">
+        <h1 class="header-title">账上农场</h1>
+        <p class="header-subtitle">全程溯源 · 安全放心</p>
+    </header>
+
+    <div class="container">
+        <!-- 用户信息区 -->
+        <div class="card">
+            <div class="chicken-info">
+                <img src="https://images.pexels.com/photos/1300355/pexels-photo-1300355.jpeg?auto=compress&cs=tinysrgb&w=300&h=200&fit=crop" alt="农家散养土鸡" class="chicken-image">
+                <h3 class="chicken-title">农家散养土鸡</h3>
+            </div>
+        </div>
+
+        <!-- 首次查询时间 -->
+        <div class="card">
+            <div class="query-time">
+                <h3 class="card-title">第一次查询时间</h3>
+                <div class="time-info">
+                    <i class="fas fa-check-circle check-icon"></i>
+                    <span class="time-text">2025-07-01 18:45:16</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 运动步数 -->
+        <div class="card">
+            <h3 class="card-title">运动步数</h3>
+            <div class="steps-info">
+                <div class="total-steps">1,730,445 步</div>
+                <div class="steps-details">
+                    <div class="detail-item">
+                        <span class="label">活动记录天数：</span>
+                        <span class="value">71 天</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="label">日均步数：</span>
+                        <span class="value">23,211 步</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 养殖环境 -->
+        <div class="card">
+            <h3 class="card-title">农场温湿度</h3>
+            <div class="environment-info">
+                <div class="temp-humidity">
+                    <div class="env-item">
+                        <i class="fas fa-thermometer-half"></i>
+                        <span class="env-label">温度：</span>
+                        <span class="env-value">27.9 ℃</span>
+                    </div>
+                    <div class="env-item">
+                        <i class="fas fa-tint"></i>
+                        <span class="env-label">湿度：</span>
+                        <span class="env-value">63.0 %RH</span>
+                    </div>
+                </div>
+                <div class="feeding-records">
+                    <h3 class="card-title">喂养操作记录</h3>
+                    <div class="record-grid">
+                        <div class="record-item clickable" onclick="navigateToFeedingRecords()">
+                            <span class="record-label">饲喂次数：</span>
+                            <div>
+                                <span class="record-value">156 次</span>
+                                <i class="fas fa-chevron-right arrow-icon"></i>
+                            </div>
+                        </div>
+                        <div class="record-item">
+                            <span class="record-label">生病次数：</span>
+                            <span class="record-value">9 次</span>
+                        </div>
+                        <div class="record-item">
+                            <span class="record-label">清污次数：</span>
+                            <span class="record-value">3 次</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 监控画面 -->
+        <div class="card">
+            <h3 class="card-title">实时监控</h3>
+            <div class="monitor-section">
+                <img src="https://images.pexels.com/photos/1300355/pexels-photo-1300355.jpeg?auto=compress&cs=tinysrgb&w=350&h=200&fit=crop" alt="实时监控画面" class="monitor-image">
+                <div class="address">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>贵州省黔东南苗族自治州台江县台盘乡日时屯899号</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 检测报告 -->
+        <div class="card">
+            <h3 class="card-title">检测报告</h3>
+            <div class="certificates">
+                <img src="https://images.pexels.com/photos/6801648/pexels-photo-6801648.jpeg?auto=compress&cs=tinysrgb&w=100&h=120&fit=crop" alt="检验报告" class="certificate">
+                <img src="https://images.pexels.com/photos/6801648/pexels-photo-6801648.jpeg?auto=compress&cs=tinysrgb&w=100&h=120&fit=crop" alt="企业认证证书" class="certificate">
+                <img src="https://images.pexels.com/photos/6801648/pexels-photo-6801648.jpeg?auto=compress&cs=tinysrgb&w=100&h=120&fit=crop" alt="质量证书" class="certificate">
+            </div>
+        </div>
+
+        <!-- 商品信息 -->
+        <div class="card">
+            <h3 class="card-title">商品信息</h3>
+            <div class="product-info">
+                <div class="info-row">
+                    <span class="info-label">商品名称：</span>
+                    <span class="info-value">农家散养土鸡</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">是否有机：</span>
+                    <span class="info-value">有机</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">国产/进口：</span>
+                    <span class="info-value">国产</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">饲养农户：</span>
+                    <span class="info-value">张三</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">养殖企业：</span>
+                    <span class="info-value">xxx养殖场</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 养殖流程 -->
+        <div class="card">
+            <h3 class="card-title">养殖流程</h3>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-stage">
+                            <img src="https://images.pexels.com/photos/1300355/pexels-photo-1300355.jpeg?auto=compress&cs=tinysrgb&w=80&h=60&fit=crop" alt="进场" class="stage-image">
+                            <div class="image-badge">3</div>
+                        </div>
+                        <div class="timeline-info">
+                            <h4>进场</h4>
+                            <p>2024-06-12 00:00:00</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-stage">
+                            <img src="https://images.pexels.com/photos/1300355/pexels-photo-1300355.jpeg?auto=compress&cs=tinysrgb&w=80&h=60&fit=crop" alt="身份绑定" class="stage-image">
+                            <div class="image-badge">5</div>
+                        </div>
+                        <div class="timeline-info">
+                            <h4>身份绑定</h4>
+                            <p>2025-08-01 11:35:45</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-stage">
+                            <img src="https://images.pexels.com/photos/1300355/pexels-photo-1300355.jpeg?auto=compress&cs=tinysrgb&w=80&h=60&fit=crop" alt="出栏" class="stage-image">
+                            <div class="image-badge">2</div>
+                        </div>
+                        <div class="timeline-info">
+                            <h4>出栏</h4>
+                            <p>2025-02-14 10:45:02</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部栏 -->
+    <footer class="footer">
+        <div class="footer-features">
+            <div class="feature-item">
+                <i class="fas fa-qrcode"></i>
+                <span>一物一码</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-eye"></i>
+                <span>信息透明</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-shield-alt"></i>
+                <span>拒绝假货</span>
+            </div>
+        </div>
+        <div class="footer-copyright">
+            <p>数据由参与方提供，xxx 溯源系统提供技术支持</p>
+        </div>
+    </footer>
+    </div>
+
+    <!-- 喂养操作记录页面 -->
+    <div id="feedingRecordsPage" class="page">
+        <header class="page-header">
+            <button class="back-button" onclick="navigateToMain()">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h1 class="page-title">喂养操作记录</h1>
+        </header>
+
+        <div class="feeding-records-container">
+            <div class="feeding-record-item">
+                <div class="record-header">
+                    <div class="food-info">
+                        <div class="food-name">米糠</div>
+                        <div class="record-time">2025-01-02 08:30</div>
+                        <div class="operator-name">操作人：张三</div>
+                    </div>
+                    <div class="record-image">
+                        <img src="https://images.pexels.com/photos/1300355/pexels-photo-1300355.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop" alt="米糠喂养" class="record-photo" onclick="showImageGallery(1)">
+                        <div class="photo-count">3</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feeding-record-item">
+                <div class="record-header">
+                    <div class="food-info">
+                        <div class="food-name">花生麸</div>
+                        <div class="record-time">2025-01-02 14:15</div>
+                        <div class="operator-name">操作人：李四</div>
+                    </div>
+                    <div class="record-image">
+                        <img src="https://images.pexels.com/photos/1300355/pexels-photo-1300355.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop" alt="花生麸喂养" class="record-photo" onclick="showImageGallery(2)">
+                        <div class="photo-count">2</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feeding-record-item">
+                <div class="record-header">
+                    <div class="food-info">
+                        <div class="food-name">玉米</div>
+                        <div class="record-time">2025-01-02 18:45</div>
+                        <div class="operator-name">操作人：王五</div>
+                    </div>
+                    <div class="record-image">
+                        <div class="no-image">无图片</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feeding-record-item">
+                <div class="record-header">
+                    <div class="food-info">
+                        <div class="food-name">稻谷</div>
+                        <div class="record-time">2025-01-03 07:20</div>
+                        <div class="operator-name">操作人：张三</div>
+                    </div>
+                    <div class="record-image">
+                        <img src="https://images.pexels.com/photos/1300355/pexels-photo-1300355.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop" alt="稻谷喂养" class="record-photo" onclick="showImageGallery(3)">
+                        <div class="photo-count">1</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feeding-record-item">
+                <div class="record-header">
+                    <div class="food-info">
+                        <div class="food-name">草籽</div>
+                        <div class="record-time">2025-01-03 12:10</div>
+                        <div class="operator-name">操作人：赵六</div>
+                    </div>
+                    <div class="record-image">
+                        <img src="https://images.pexels.com/photos/1300355/pexels-photo-1300355.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop" alt="草籽喂养" class="record-photo" onclick="showImageGallery(4)">
+                        <div class="photo-count">4</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feeding-record-item">
+                <div class="record-header">
+                    <div class="food-info">
+                        <div class="food-name">米糠</div>
+                        <div class="record-time">2025-01-03 16:30</div>
+                        <div class="operator-name">操作人：李四</div>
+                    </div>
+                    <div class="record-image">
+                        <img src="https://images.pexels.com/photos/1300355/pexels-photo-1300355.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop" alt="米糠喂养" class="record-photo" onclick="showImageGallery(5)">
+                        <div class="photo-count">2</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
