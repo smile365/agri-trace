@@ -39,6 +39,7 @@ def create_app():
                 'product_detail': '/api/v1/product/{id}',
                 'farm_tables': '/api/v1/farm/tables?product_id={id}',
                 'farm_info': '/api/v1/farm/info?product_id={id}',
+                'table_fields': '/api/v1/farm/table/fields?product_id={id}&tname={table_name}',
                 'health': '/api/v1/health'
             }
         })

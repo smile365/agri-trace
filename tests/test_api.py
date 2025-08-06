@@ -243,6 +243,107 @@ def test_farm_info_api():
 
     print("✓ 缺少参数测试通过\n")
 
+def test_table_fields_api():
+    """测试数据表字段定义接口"""
+    print("=== 测试数据表字段定义接口 ===")
+
+    # 首先获取一个有效的产品ID
+    products_response = requests.get(f"{BASE_URL}/api/v1/products")
+    assert products_response.status_code == 200
+
+    products_data = products_response.json()
+    if products_data['data']['products']:
+        product_id = products_data['data']['products'][0]['product_id']
+        print(f"使用产品ID: {product_id}")
+
+        # 获取数据表列表
+        tables_response = requests.get(f"{BASE_URL}/api/v1/farm/tables?product_id={product_id}")
+        assert tables_response.status_code == 200
+
+        tables_data = tables_response.json()
+        if tables_data['data']['tables']:
+            table_name = tables_data['data']['tables'][0]['table_name']
+            print(f"使用表名: {table_name}")
+
+            # 测试获取字段定义
+            import urllib.parse
+            encoded_table_name = urllib.parse.quote(table_name)
+            response = requests.get(f"{BASE_URL}/api/v1/farm/table/fields?product_id={product_id}&tname={encoded_table_name}")
+
+            print(f"状态码: {response.status_code}")
+            print(f"响应数据: {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data['code'] == 0
+            assert 'data' in data
+
+            # 检查数据结构
+            fields_data = data['data']
+            required_fields = ['table_info', 'farmer_info', 'fields', 'total']
+            for field in required_fields:
+                assert field in fields_data, f"缺少字段: {field}"
+
+            # 检查表信息
+            table_info = fields_data['table_info']
+            required_table_fields = ['table_id', 'table_name', 'revision']
+            for field in required_table_fields:
+                assert field in table_info, f"表信息缺少字段: {field}"
+
+            # 检查字段定义
+            fields = fields_data['fields']
+            assert isinstance(fields, list)
+            if fields:
+                field = fields[0]
+                required_field_fields = ['field_id', 'field_name', 'type', 'is_primary']
+                for field_attr in required_field_fields:
+                    assert field_attr in field, f"字段定义缺少属性: {field_attr}"
+
+            print("✓ 数据表字段定义接口测试通过")
+        else:
+            print("⚠ 没有可用的数据表，跳过字段定义测试")
+    else:
+        print("⚠ 没有可用的产品数据，跳过字段定义测试")
+
+    # 测试缺少product_id参数
+    print("\n--- 测试缺少product_id参数 ---")
+    response = requests.get(f"{BASE_URL}/api/v1/farm/table/fields?tname=商品")
+    print(f"状态码: {response.status_code}")
+    print(f"响应数据: {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data['code'] == 1
+    assert '缺少必要参数' in data['message']
+
+    print("✓ 缺少product_id参数测试通过")
+
+    # 测试缺少tname参数
+    print("\n--- 测试缺少tname参数 ---")
+    response = requests.get(f"{BASE_URL}/api/v1/farm/table/fields?product_id=recuT512gzx6yw")
+    print(f"状态码: {response.status_code}")
+    print(f"响应数据: {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data['code'] == 1
+    assert '缺少必要参数' in data['message']
+
+    print("✓ 缺少tname参数测试通过")
+
+    # 测试不存在的表名
+    print("\n--- 测试不存在的表名 ---")
+    response = requests.get(f"{BASE_URL}/api/v1/farm/table/fields?product_id=recuT512gzx6yw&tname=不存在的表")
+    print(f"状态码: {response.status_code}")
+    print(f"响应数据: {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
+
+    assert response.status_code == 404
+    data = response.json()
+    assert data['code'] == 1
+    assert '未找到名称为' in data['message']
+
+    print("✓ 不存在表名测试通过\n")
+
 def test_root_endpoint():
     """测试根路径"""
     print("=== 测试根路径 ===")
@@ -259,6 +360,7 @@ def test_root_endpoint():
     assert 'product_detail' in data['endpoints']
     assert 'farm_tables' in data['endpoints']
     assert 'farm_info' in data['endpoints']
+    assert 'table_fields' in data['endpoints']
 
     print("✓ 根路径测试通过\n")
 
@@ -273,6 +375,7 @@ def main():
         test_product_detail_api()
         test_farm_tables_api()
         test_farm_info_api()
+        test_table_fields_api()
         test_root_endpoint()
 
         print("🎉 所有API测试通过！")

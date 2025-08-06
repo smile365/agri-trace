@@ -380,6 +380,112 @@ def get_farm_info():
 
         return jsonify(error_response), 500
 
+@api_v1.route('/farm/table/fields', methods=['GET'])
+def get_table_fields():
+    """
+    获取数据表的字段定义（Admin接口）
+
+    Query Parameters:
+        product_id: 产品ID（农户记录ID）
+        tname: 数据表名称
+
+    Returns:
+        JSON响应包含数据表的字段定义
+    """
+    try:
+        # 获取查询参数
+        product_id = request.args.get('product_id')
+        table_name = request.args.get('tname')
+
+        logger.info(f"开始获取数据表字段定义，产品ID: {product_id}, 表名: {table_name}")
+
+        # 验证必要参数
+        if not product_id or len(product_id.strip()) == 0:
+            error_response = {
+                'code': 1,
+                'message': '缺少必要参数：product_id',
+                'data': None
+            }
+            return jsonify(error_response), 400
+
+        if not table_name or len(table_name.strip()) == 0:
+            error_response = {
+                'code': 1,
+                'message': '缺少必要参数：tname（数据表名称）',
+                'data': None
+            }
+            return jsonify(error_response), 400
+
+        # 从飞书获取数据表字段定义
+        result = feishu_service.get_table_fields_by_name(product_id.strip(), table_name.strip())
+
+        if result['success']:
+            data = result['data']
+            table_info = data['table_info']
+            farmer_info = data['farmer_info']
+            fields = data['fields']
+
+            logger.info(f"成功获取农户 {farmer_info['farmer_name']} 的数据表 {table_info['table_name']} 的 {len(fields)} 个字段定义")
+
+            # 格式化响应数据
+            response_data = {
+                'code': 0,
+                'message': 'success',
+                'data': {
+                    'table_info': table_info,
+                    'farmer_info': farmer_info,
+                    'fields': fields,
+                    'total': data['total'],
+                    'has_more': data['has_more'],
+                    'page_token': data.get('page_token')
+                }
+            }
+
+            return jsonify(response_data), 200
+        else:
+            logger.error(f"获取数据表字段定义失败: {result['message']}")
+
+            # 判断错误类型
+            if 'RecordIdNotFound' in result['message'] or '404' in result['message']:
+                error_response = {
+                    'code': 1,
+                    'message': '未找到指定的产品',
+                    'data': None
+                }
+                return jsonify(error_response), 404
+            elif '未找到名称为' in result['message']:
+                error_response = {
+                    'code': 1,
+                    'message': result['message'],
+                    'data': None
+                }
+                return jsonify(error_response), 404
+            elif '缺少必要的API配置信息' in result['message']:
+                error_response = {
+                    'code': 1,
+                    'message': result['message'],
+                    'data': None
+                }
+                return jsonify(error_response), 400
+            else:
+                error_response = {
+                    'code': 1,
+                    'message': result['message'],
+                    'data': None
+                }
+                return jsonify(error_response), 500
+
+    except Exception as e:
+        logger.error(f"获取数据表字段定义异常: {str(e)}")
+
+        error_response = {
+            'code': 1,
+            'message': f'服务器内部错误: {str(e)}',
+            'data': None
+        }
+
+        return jsonify(error_response), 500
+
 @api_v1.route('/health', methods=['GET'])
 def health_check():
     """

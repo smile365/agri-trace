@@ -652,5 +652,135 @@ class FeishuService:
             'message': 'success'
         }
 
+    def get_table_fields(self, farmer_app_token: str, farmer_auth_code: str, table_id: str) -> Dict:
+        """
+        使用农户的app_token和授权码获取指定数据表的字段定义
+
+        Args:
+            farmer_app_token: 农户的app_token
+            farmer_auth_code: 农户的授权码
+            table_id: 数据表ID
+
+        Returns:
+            包含字段定义的字典
+        """
+        url = f"{self.base_url}/open-apis/bitable/v1/apps/{farmer_app_token}/tables/{table_id}/fields"
+
+        # 使用农户的授权码构建请求头
+        headers = {
+            'Authorization': f'Bearer {farmer_auth_code}',
+            'Content-Type': 'application/json'
+        }
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+
+            data = response.json()
+            if data.get('code') == 0:
+                return {
+                    'success': True,
+                    'data': data.get('data', {}),
+                    'message': 'success'
+                }
+            else:
+                return {
+                    'success': False,
+                    'data': None,
+                    'message': data.get('msg', '未知错误')
+                }
+
+        except requests.exceptions.RequestException as e:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'请求失败: {str(e)}'
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'处理失败: {str(e)}'
+            }
+
+    def get_table_fields_by_name(self, product_id: str, table_name: str) -> Dict:
+        """
+        根据产品ID和表名获取数据表的字段定义
+
+        Args:
+            product_id: 产品ID（农户记录ID）
+            table_name: 数据表名称
+
+        Returns:
+            包含字段定义的字典
+        """
+        # 首先获取农户信息和数据表列表
+        tables_result = self.get_farmer_tables(product_id)
+
+        if not tables_result['success']:
+            return tables_result
+
+        farmer_info = tables_result['data']['farmer_info']
+        tables = tables_result['data']['tables']
+
+        # 查找指定名称的数据表
+        target_table = None
+        for table in tables:
+            if table['table_name'] == table_name:
+                target_table = table
+                break
+
+        if not target_table:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'未找到名称为 "{table_name}" 的数据表'
+            }
+
+        app_token = farmer_info['app_token']
+        auth_code = farmer_info['auth_code']
+        table_id = target_table['table_id']
+
+        # 获取字段定义
+        fields_result = self.get_table_fields(app_token, auth_code, table_id)
+
+        if not fields_result['success']:
+            return fields_result
+
+        # 处理字段定义数据
+        fields_data = fields_result['data']
+        fields = []
+
+        for field in fields_data.get('items', []):
+            field_info = {
+                'field_id': field.get('field_id'),
+                'field_name': field.get('field_name'),
+                'type': field.get('type'),
+                'property': field.get('property', {}),
+                'description': field.get('description', ''),
+                'is_primary': field.get('is_primary', False)
+            }
+            fields.append(field_info)
+
+        return {
+            'success': True,
+            'data': {
+                'table_info': {
+                    'table_id': target_table['table_id'],
+                    'table_name': target_table['table_name'],
+                    'revision': target_table['revision']
+                },
+                'farmer_info': {
+                    'product_id': farmer_info['product_id'],
+                    'farmer_name': farmer_info['farmer_name']
+                },
+                'fields': fields,
+                'total': len(fields),
+                'has_more': fields_data.get('has_more', False),
+                'page_token': fields_data.get('page_token')
+            },
+            'message': 'success'
+        }
+
 # 创建服务实例
 feishu_service = FeishuService()

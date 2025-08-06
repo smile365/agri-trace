@@ -223,7 +223,95 @@
 - `404`: 产品不存在
 - `500`: 服务器内部错误
 
-### 5. 健康检查
+### 5. 获取数据表字段定义（Admin接口）
+
+**接口地址**: `GET /api/v1/farm/table/fields?product_id={id}&tname={table_name}`
+
+**查询参数**:
+- `product_id`: 产品ID（必填）
+- `tname`: 数据表名称（必填）
+
+**功能说明**: 获取指定数据表的字段定义，用于管理和开发目的
+
+**响应示例**:
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "table_info": {
+      "table_id": "tblELkotV4rh2PCz",
+      "table_name": "商品",
+      "revision": 25
+    },
+    "farmer_info": {
+      "farmer_name": "张三",
+      "product_id": "recuT512gzx6yw"
+    },
+    "fields": [
+      {
+        "field_id": "fldJXi04FC",
+        "field_name": "名称",
+        "type": 1,
+        "property": null,
+        "description": "",
+        "is_primary": true
+      },
+      {
+        "field_id": "fldKes408E",
+        "field_name": "分组",
+        "type": 1,
+        "property": null,
+        "description": "",
+        "is_primary": false
+      },
+      {
+        "field_id": "fld8Zu8H4r",
+        "field_name": "文本",
+        "type": 1,
+        "property": null,
+        "description": "",
+        "is_primary": false
+      },
+      {
+        "field_id": "fldyhqoFsR",
+        "field_name": "顺序",
+        "type": 2,
+        "property": {
+          "formatter": "0"
+        },
+        "description": "",
+        "is_primary": false
+      },
+      {
+        "field_id": "flds6ik0IA",
+        "field_name": "图片",
+        "type": 17,
+        "property": null,
+        "description": "",
+        "is_primary": false
+      }
+    ],
+    "total": 6,
+    "has_more": false,
+    "page_token": "flds6ik0IA"
+  }
+}
+```
+
+**字段类型说明**:
+- `1`: 文本
+- `2`: 数字
+- `5`: 日期时间
+- `17`: 图片
+- `1002`: 修改时间
+
+**错误响应**:
+- `400`: 缺少必要参数
+- `404`: 产品不存在或数据表不存在
+- `500`: 服务器内部错误
+
+### 6. 健康检查
 
 **接口地址**: `GET /api/v1/health`
 
@@ -258,6 +346,9 @@ curl -X GET "http://127.0.0.1:5000/api/v1/farm/tables?product_id=recuT512gzx6yw"
 # 获取农户完整信息
 curl -X GET "http://127.0.0.1:5000/api/v1/farm/info?product_id=recuT512gzx6yw"
 
+# 获取数据表字段定义
+curl -X GET "http://127.0.0.1:5000/api/v1/farm/table/fields?product_id=recuT512gzx6yw&tname=商品"
+
 # 健康检查
 curl -X GET "http://127.0.0.1:5000/api/v1/health"
 ```
@@ -282,6 +373,11 @@ fetch('http://127.0.0.1:5000/api/v1/farm/tables?product_id=recuT512gzx6yw')
 
 // 获取农户完整信息
 fetch('http://127.0.0.1:5000/api/v1/farm/info?product_id=recuT512gzx6yw')
+  .then(response => response.json())
+  .then(data => console.log(data));
+
+// 获取数据表字段定义
+fetch('http://127.0.0.1:5000/api/v1/farm/table/fields?product_id=recuT512gzx6yw&tname=商品')
   .then(response => response.json())
   .then(data => console.log(data));
 ```
