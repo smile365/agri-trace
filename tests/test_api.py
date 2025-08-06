@@ -166,6 +166,83 @@ def test_farm_tables_api():
 
     print("✓ 无效product_id测试通过\n")
 
+def test_farm_info_api():
+    """测试农户完整信息接口"""
+    print("=== 测试农户完整信息接口 ===")
+
+    # 首先获取一个有效的产品ID
+    products_response = requests.get(f"{BASE_URL}/api/v1/products")
+    assert products_response.status_code == 200
+
+    products_data = products_response.json()
+    if products_data['data']['products']:
+        product_id = products_data['data']['products'][0]['product_id']
+        print(f"使用产品ID: {product_id}")
+
+        # 测试获取农户完整信息
+        response = requests.get(f"{BASE_URL}/api/v1/farm/info?product_id={product_id}")
+
+        print(f"状态码: {response.status_code}")
+        print(f"响应数据: {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data['code'] == 0
+        assert 'data' in data
+
+        # 检查数据结构
+        farm_data = data['data']
+        required_fields = ['farmer_info', 'product_info', 'feeding_records', 'breeding_process', 'statistics']
+        for field in required_fields:
+            assert field in farm_data, f"缺少字段: {field}"
+
+        # 检查农户信息
+        farmer_info = farm_data['farmer_info']
+        required_farmer_fields = ['product_id', 'farmer_name', 'app_token']
+        for field in required_farmer_fields:
+            assert field in farmer_info, f"农户信息缺少字段: {field}"
+
+        # 检查统计信息
+        statistics = farm_data['statistics']
+        required_stats_fields = ['feeding_count', 'process_count']
+        for field in required_stats_fields:
+            assert field in statistics, f"统计信息缺少字段: {field}"
+
+        # 检查饲喂记录格式
+        feeding_records = farm_data['feeding_records']
+        assert isinstance(feeding_records, list)
+        if feeding_records:
+            record = feeding_records[0]
+            required_record_fields = ['record_id', 'food_name', 'operator', 'operation_time_formatted']
+            for field in required_record_fields:
+                assert field in record, f"饲喂记录缺少字段: {field}"
+
+        # 检查养殖流程格式
+        breeding_process = farm_data['breeding_process']
+        assert isinstance(breeding_process, list)
+        if breeding_process:
+            process = breeding_process[0]
+            required_process_fields = ['record_id', 'process_name', 'operation_time_formatted']
+            for field in required_process_fields:
+                assert field in process, f"养殖流程缺少字段: {field}"
+
+        print("✓ 农户完整信息接口测试通过")
+    else:
+        print("⚠ 没有可用的产品数据，跳过完整信息测试")
+
+    # 测试缺少product_id参数
+    print("\n--- 测试缺少product_id参数 ---")
+    response = requests.get(f"{BASE_URL}/api/v1/farm/info")
+    print(f"状态码: {response.status_code}")
+    print(f"响应数据: {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data['code'] == 1
+    assert '缺少必要参数' in data['message']
+
+    print("✓ 缺少参数测试通过\n")
+
 def test_root_endpoint():
     """测试根路径"""
     print("=== 测试根路径 ===")
@@ -181,6 +258,7 @@ def test_root_endpoint():
     assert 'endpoints' in data
     assert 'product_detail' in data['endpoints']
     assert 'farm_tables' in data['endpoints']
+    assert 'farm_info' in data['endpoints']
 
     print("✓ 根路径测试通过\n")
 
@@ -194,6 +272,7 @@ def main():
         test_products_api()
         test_product_detail_api()
         test_farm_tables_api()
+        test_farm_info_api()
         test_root_endpoint()
 
         print("🎉 所有API测试通过！")

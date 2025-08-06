@@ -314,5 +314,166 @@ class FeishuService:
             'message': 'success'
         }
 
+    def get_farmer_table_records(self, farmer_app_token: str, farmer_auth_code: str, table_id: str, page_size: int = 20) -> Dict:
+        """
+        使用农户的app_token和授权码获取指定数据表的记录
+
+        Args:
+            farmer_app_token: 农户的app_token
+            farmer_auth_code: 农户的授权码
+            table_id: 数据表ID
+            page_size: 每页记录数
+
+        Returns:
+            包含数据表记录的字典
+        """
+        url = f"{self.base_url}/open-apis/bitable/v1/apps/{farmer_app_token}/tables/{table_id}/records"
+
+        # 使用农户的授权码构建请求头
+        headers = {
+            'Authorization': f'Bearer {farmer_auth_code}',
+            'Content-Type': 'application/json'
+        }
+
+        params = {
+            'page_size': page_size
+        }
+
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+
+            data = response.json()
+            if data.get('code') == 0:
+                return {
+                    'success': True,
+                    'data': data.get('data', {}),
+                    'message': 'success'
+                }
+            else:
+                return {
+                    'success': False,
+                    'data': None,
+                    'message': data.get('msg', '未知错误')
+                }
+
+        except requests.exceptions.RequestException as e:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'请求失败: {str(e)}'
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'处理失败: {str(e)}'
+            }
+
+    def get_farm_complete_info(self, product_id: str) -> Dict:
+        """
+        获取农户的完整信息，包括商品信息、饲喂记录、养殖流程等
+
+        Args:
+            product_id: 产品ID（农户记录ID）
+
+        Returns:
+            包含农户完整信息的字典
+        """
+        # 首先获取农户信息和数据表列表
+        tables_result = self.get_farmer_tables(product_id)
+
+        if not tables_result['success']:
+            return tables_result
+
+        farmer_info = tables_result['data']['farmer_info']
+        tables = tables_result['data']['tables']
+
+        app_token = farmer_info['app_token']
+        auth_code = farmer_info['auth_code']
+
+        # 初始化结果数据
+        complete_info = {
+            'farmer_info': farmer_info,
+            'product_info': {},
+            'feeding_records': [],
+            'breeding_process': [],
+            'statistics': {
+                'feeding_count': 0,
+                'process_count': 0
+            }
+        }
+
+        # 获取各个数据表的数据
+        for table in tables:
+            table_name = table['table_name']
+            table_id = table['table_id']
+
+            # 获取数据表记录
+            records_result = self.get_farmer_table_records(app_token, auth_code, table_id)
+
+            if records_result['success']:
+                records = records_result['data'].get('items', [])
+
+                if table_name == '商品':
+                    # 处理商品信息
+                    product_data = {}
+                    for record in records:
+                        fields = record.get('fields', {})
+                        name = fields.get('名称', '')
+                        text = fields.get('文本', '')
+                        image = fields.get('图片', [])
+
+                        if name and text:
+                            product_data[name] = {
+                                'value': text,
+                                'images': image if isinstance(image, list) else []
+                            }
+
+                    complete_info['product_info'] = product_data
+
+                elif table_name == '饲喂记录':
+                    # 处理饲喂记录
+                    feeding_records = []
+                    for record in records:
+                        fields = record.get('fields', {})
+                        feeding_record = {
+                            'record_id': record.get('record_id'),
+                            'food_name': fields.get('名称', ''),
+                            'operator': fields.get('操作人', ''),
+                            'operation_time': fields.get('操作时间'),
+                            'created_time': fields.get('创建'),
+                            'updated_time': fields.get('更新'),
+                            'images': fields.get('图片', []) if isinstance(fields.get('图片'), list) else []
+                        }
+                        feeding_records.append(feeding_record)
+
+                    complete_info['feeding_records'] = feeding_records
+                    complete_info['statistics']['feeding_count'] = len(feeding_records)
+
+                elif table_name == '养殖流程':
+                    # 处理养殖流程
+                    breeding_process = []
+                    for record in records:
+                        fields = record.get('fields', {})
+                        process_record = {
+                            'record_id': record.get('record_id'),
+                            'process_name': fields.get('名称', ''),
+                            'operation_time': fields.get('操作时间'),
+                            'created_time': fields.get('创建'),
+                            'updated_time': fields.get('更新'),
+                            'images': fields.get('图片', []) if isinstance(fields.get('图片'), list) else []
+                        }
+                        breeding_process.append(process_record)
+
+                    complete_info['breeding_process'] = breeding_process
+                    complete_info['statistics']['process_count'] = len(breeding_process)
+
+        return {
+            'success': True,
+            'data': complete_info,
+            'message': 'success'
+        }
+
 # 创建服务实例
 feishu_service = FeishuService()
