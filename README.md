@@ -4,46 +4,7 @@
 
 ## 项目结构
 
-```
-farm/
-├── README.md                    # 项目说明文档
-├── requirements.txt             # Python依赖包列表
-├── config/                      # 配置文件目录
-│   ├── .env                     # 环境变量配置
-│   └── .env.example             # 环境变量配置模板
-├── backend/                     # 后端代码目录
-│   ├── api/                     # API接口
-│   │   ├── __init__.py
-│   │   ├── fs_demo.py           # 飞书API测试文件
-│   │   └── routes.py            # 路由定义
-│   ├── services/                # 业务逻辑服务
-│   │   ├── __init__.py
-│   │   ├── feishu_service.py    # 飞书API服务
-│   │   └── data_service.py      # 数据处理服务
-│   ├── models/                  # 数据模型
-│   │   ├── __init__.py
-│   │   └── farmer.py            # 农户模型
-│   ├── utils/                   # 工具函数
-│   │   ├── __init__.py
-│   │   └── helpers.py           # 辅助函数
-│   └── app.py                   # Flask应用入口
-├── frontend/                    # 前端代码目录
-│   ├── templates/               # HTML模板
-│   │   └── index.html           # 主页面
-│   └── static/                  # 静态资源
-│       ├── css/
-│       │   └── style.css        # 样式文件
-│       ├── js/
-│       │   └── main.js          # JavaScript文件
-│       └── images/              # 图片资源
-├── docs/                        # 文档目录
-│   ├── 功能清单.md              # 功能清单
-│   └── 飞书多维表格接口.md      # 飞书API文档
-└── tests/                       # 测试文件目录
-    ├── __init__.py
-    ├── test_api.py              # API测试
-    └── test_services.py         # 服务测试
-```
+
 
 ## 技术栈
 
