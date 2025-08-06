@@ -170,6 +170,98 @@ def get_product_detail(product_id):
 
         return jsonify(error_response), 500
 
+@api_v1.route('/farm/tables', methods=['GET'])
+def get_farm_tables():
+    """
+    获取农户的数据表列表
+
+    Query Parameters:
+        product_id: 产品ID（农户记录ID）
+
+    Returns:
+        JSON响应包含农户的数据表列表
+    """
+    try:
+        # 获取查询参数
+        product_id = request.args.get('product_id')
+
+        logger.info(f"开始获取农户数据表列表，产品ID: {product_id}")
+
+        # 验证产品ID参数
+        if not product_id or len(product_id.strip()) == 0:
+            error_response = {
+                'code': 1,
+                'message': '缺少必要参数：product_id',
+                'data': None
+            }
+            return jsonify(error_response), 400
+
+        # 从飞书获取农户数据表列表
+        result = feishu_service.get_farmer_tables(product_id.strip())
+
+        if result['success']:
+            data = result['data']
+            farmer_info = data['farmer_info']
+            tables = data['tables']
+
+            logger.info(f"成功获取农户 {farmer_info['farmer_name']} 的 {len(tables)} 个数据表")
+
+            # 格式化响应数据
+            response_data = {
+                'code': 0,
+                'message': 'success',
+                'data': {
+                    'farmer_info': {
+                        'product_id': farmer_info['product_id'],
+                        'farmer_name': farmer_info['farmer_name'],
+                        'app_token': farmer_info['app_token']
+                        # 注意：出于安全考虑，不在响应中返回完整的授权码
+                    },
+                    'tables': tables,
+                    'total': data['total'],
+                    'has_more': data['has_more'],
+                    'page_token': data.get('page_token')
+                }
+            }
+
+            return jsonify(response_data), 200
+        else:
+            logger.error(f"获取农户数据表列表失败: {result['message']}")
+
+            # 判断错误类型
+            if 'RecordIdNotFound' in result['message'] or '404' in result['message']:
+                error_response = {
+                    'code': 1,
+                    'message': '未找到指定的产品',
+                    'data': None
+                }
+                return jsonify(error_response), 404
+            elif '缺少必要的API配置信息' in result['message']:
+                error_response = {
+                    'code': 1,
+                    'message': result['message'],
+                    'data': None
+                }
+                return jsonify(error_response), 400
+            else:
+                error_response = {
+                    'code': 1,
+                    'message': result['message'],
+                    'data': None
+                }
+                return jsonify(error_response), 500
+
+    except Exception as e:
+        logger.error(f"获取农户数据表列表异常: {str(e)}")
+
+        error_response = {
+            'code': 1,
+            'message': f'服务器内部错误: {str(e)}',
+            'data': None
+        }
+
+        return jsonify(error_response), 500
+
 @api_v1.route('/health', methods=['GET'])
 def health_check():
     """

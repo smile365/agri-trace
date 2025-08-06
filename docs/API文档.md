@@ -88,7 +88,54 @@
 - `400`: 产品ID格式错误
 - `500`: 服务器内部错误
 
-### 3. 健康检查
+### 3. 获取农户数据表列表
+
+**接口地址**: `GET /api/v1/farm/tables?product_id={id}`
+
+**查询参数**:
+- `product_id`: 产品ID（必填）
+
+**响应示例**:
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "farmer_info": {
+      "product_id": "recuT512gzx6yw",
+      "farmer_name": "张三",
+      "app_token": "KnOFbTu1harM6wsNbWdcro2Rnoc"
+    },
+    "tables": [
+      {
+        "table_id": "tblELkotV4rh2PCz",
+        "table_name": "商品",
+        "revision": 25
+      },
+      {
+        "table_id": "tblct3YtuqdyA6VW",
+        "table_name": "饲喂记录",
+        "revision": 9
+      },
+      {
+        "table_id": "tblu6cwfWjeFI0Vv",
+        "table_name": "养殖流程",
+        "revision": 7
+      }
+    ],
+    "total": 3,
+    "has_more": false,
+    "page_token": "tblu6cwfWjeFI0Vv"
+  }
+}
+```
+
+**错误响应**:
+- `400`: 缺少product_id参数或农户缺少API配置
+- `404`: 产品不存在
+- `500`: 服务器内部错误
+
+### 4. 健康检查
 
 **接口地址**: `GET /api/v1/health`
 
@@ -117,6 +164,9 @@ curl -X GET "http://127.0.0.1:5000/api/v1/products"
 # 获取产品详情
 curl -X GET "http://127.0.0.1:5000/api/v1/product/recuT512gzx6yw"
 
+# 获取农户数据表列表
+curl -X GET "http://127.0.0.1:5000/api/v1/farm/tables?product_id=recuT512gzx6yw"
+
 # 健康检查
 curl -X GET "http://127.0.0.1:5000/api/v1/health"
 ```
@@ -131,6 +181,11 @@ fetch('http://127.0.0.1:5000/api/v1/products')
 
 // 获取产品详情
 fetch('http://127.0.0.1:5000/api/v1/product/recuT512gzx6yw')
+  .then(response => response.json())
+  .then(data => console.log(data));
+
+// 获取农户数据表列表
+fetch('http://127.0.0.1:5000/api/v1/farm/tables?product_id=recuT512gzx6yw')
   .then(response => response.json())
   .then(data => console.log(data));
 ```

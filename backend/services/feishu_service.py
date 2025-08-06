@@ -200,5 +200,119 @@ class FeishuService:
             'message': 'success'
         }
 
+    def get_tables_by_farmer_token(self, farmer_app_token: str, farmer_auth_code: str) -> Dict:
+        """
+        使用农户的app_token和授权码获取数据表列表
+
+        Args:
+            farmer_app_token: 农户的app_token
+            farmer_auth_code: 农户的授权码
+
+        Returns:
+            包含数据表列表的字典
+        """
+        url = f"{self.base_url}/open-apis/bitable/v1/apps/{farmer_app_token}/tables"
+
+        # 使用农户的授权码构建请求头
+        headers = {
+            'Authorization': f'Bearer {farmer_auth_code}',
+            'Content-Type': 'application/json'
+        }
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+
+            data = response.json()
+            if data.get('code') == 0:
+                return {
+                    'success': True,
+                    'data': data.get('data', {}),
+                    'message': 'success'
+                }
+            else:
+                return {
+                    'success': False,
+                    'data': None,
+                    'message': data.get('msg', '未知错误')
+                }
+
+        except requests.exceptions.RequestException as e:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'请求失败: {str(e)}'
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'处理失败: {str(e)}'
+            }
+
+    def get_farmer_tables(self, product_id: str) -> Dict:
+        """
+        根据产品ID获取农户的数据表列表
+
+        Args:
+            product_id: 产品ID（农户记录ID）
+
+        Returns:
+            包含农户数据表列表的字典
+        """
+        # 首先获取农户信息
+        farmer_result = self.get_farmer_by_id(product_id)
+
+        if not farmer_result['success']:
+            return farmer_result
+
+        farmer_data = farmer_result['data']
+
+        # 检查农户是否有必要的API配置
+        app_token = farmer_data.get('app_token', '').strip()
+        auth_code = farmer_data.get('auth_code', '').strip()
+
+        if not app_token or not auth_code:
+            return {
+                'success': False,
+                'data': None,
+                'message': '农户缺少必要的API配置信息（app_token或授权码）'
+            }
+
+        # 获取农户的数据表列表
+        tables_result = self.get_tables_by_farmer_token(app_token, auth_code)
+
+        if not tables_result['success']:
+            return tables_result
+
+        # 处理数据表信息
+        tables_data = tables_result['data']
+        tables = []
+
+        for table in tables_data.get('items', []):
+            table_info = {
+                'table_id': table.get('table_id'),
+                'table_name': table.get('name'),
+                'revision': table.get('revision')
+            }
+            tables.append(table_info)
+
+        return {
+            'success': True,
+            'data': {
+                'farmer_info': {
+                    'product_id': farmer_data['record_id'],
+                    'farmer_name': farmer_data['farmer_name'],
+                    'app_token': app_token,
+                    'auth_code': auth_code
+                },
+                'tables': tables,
+                'total': len(tables),
+                'has_more': tables_data.get('has_more', False),
+                'page_token': tables_data.get('page_token')
+            },
+            'message': 'success'
+        }
+
 # 创建服务实例
 feishu_service = FeishuService()
