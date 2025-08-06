@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>前端功能测试</title>
+    <script src="https://unpkg.com/petite-vue@0.4.1/dist/petite-vue.iife.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .loading { color: #666; }
+        .error { color: #e74c3c; }
+        .success { color: #27ae60; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body v-scope="TestApp()" @vue:mounted="mounted">
+    <h1>前端功能测试</h1>
+    
+    <div class="test-section">
+        <h2>API连接测试</h2>
+        <div v-if="loading" class="loading">正在测试API连接...</div>
+        <div v-if="error" class="error">错误: {{ error }}</div>
+        <div v-if="!loading && !error" class="success">✓ API连接成功</div>
+    </div>
+    
+    <div class="test-section" v-if="farmData">
+        <h2>农户信息</h2>
+        <p><strong>农户名称:</strong> {{ farmData.farmer_info?.farmer_name }}</p>
+        <p><strong>产品ID:</strong> {{ farmData.farmer_info?.product_id }}</p>
+    </div>
+    
+    <div class="test-section" v-if="farmData">
+        <h2>商品信息</h2>
+        <div v-if="farmData.product_info">
+            <p><strong>标题:</strong> {{ farmData.product_info.标题 }}</p>
+            <p><strong>监控地址:</strong> {{ farmData.product_info.监控地址 }}</p>
+            <p><strong>第一次查询时间:</strong> {{ farmData.product_info.第一次查询时间 }}</p>
+            
+            <h3>商品详情</h3>
+            <div v-if="farmData.product_info.商品信息">
+                <div v-for="item in farmData.product_info.商品信息" :key="item.index">
+                    <strong>{{ getItemLabel(item) }}:</strong> {{ getItemValue(item) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="test-section" v-if="farmData">
+        <h2>统计信息</h2>
+        <p><strong>饲喂次数:</strong> {{ farmData.statistics?.feeding_count || 0 }}</p>
+        <p><strong>流程节点:</strong> {{ farmData.statistics?.process_count || 0 }}</p>
+    </div>
+    
+    <div class="test-section" v-if="farmData">
+        <h2>原始数据</h2>
+        <pre>{{ JSON.stringify(farmData, null, 2) }}</pre>
+    </div>
+
+    <script>
+        const { createApp } = PetiteVue;
+
+        function TestApp() {
+            return {
+                loading: true,
+                error: null,
+                farmData: null,
+
+                mounted() {
+                    this.loadData();
+                },
+
+                async loadData() {
+                    this.loading = true;
+                    this.error = null;
+                    
+                    try {
+                        const response = await fetch('/api/v1/farm/info?product_id=recuT512gzx6yw');
+                        const result = await response.json();
+                        
+                        if (result.code === 0) {
+                            this.farmData = result.data;
+                        } else {
+                            this.error = result.message || '获取数据失败';
+                        }
+                    } catch (err) {
+                        this.error = '网络请求失败: ' + err.message;
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                getItemLabel(item) {
+                    const keys = Object.keys(item).filter(key => key !== 'index');
+                    return keys[0] || '';
+                },
+
+                getItemValue(item) {
+                    const keys = Object.keys(item).filter(key => key !== 'index');
+                    const label = keys[0] || '';
+                    return item[label] || '';
+                }
+            };
+        }
+
+        createApp({
+            TestApp
+        }).mount();
+    </script>
+</body>
+</html>

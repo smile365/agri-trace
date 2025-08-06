@@ -5,7 +5,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template, send_from_directory
 from flask_cors import CORS
 import logging
 from config import config
@@ -13,7 +13,11 @@ from api.routes import api_v1
 
 def create_app():
     """创建Flask应用"""
-    app = Flask(__name__)
+    # 设置模板和静态文件路径
+    template_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'frontend', 'templates')
+    static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'frontend', 'static')
+
+    app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
     
     # 配置应用
     app.config['SECRET_KEY'] = config.SECRET_KEY
@@ -28,9 +32,9 @@ def create_app():
     # 注册蓝图
     app.register_blueprint(api_v1)
     
-    # 根路径
+    # 根路径 - API文档
     @app.route('/')
-    def index():
+    def api_index():
         return jsonify({
             'message': '农产品溯源系统API',
             'version': '1.0.0',
@@ -41,8 +45,26 @@ def create_app():
                 'farm_info': '/api/v1/farm/info?product_id={id}',
                 'table_fields': '/api/v1/farm/table/fields?product_id={id}&tname={table_name}',
                 'health': '/api/v1/health'
+            },
+            'frontend': {
+                'page': '/index.html?id={product_id}'
             }
         })
+
+    # 前端页面路由
+    @app.route('/index.html')
+    def frontend_page():
+        return render_template('index.html')
+
+    # 测试页面路由
+    @app.route('/test.html')
+    def test_page():
+        return send_from_directory(app.template_folder, 'test.html')
+
+    # 静态文件路由
+    @app.route('/static/<path:filename>')
+    def static_files(filename):
+        return send_from_directory(app.static_folder, filename)
     
     # 错误处理
     @app.errorhandler(404)

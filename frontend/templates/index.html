@@ -4,12 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>掌上农场 - 土鸡养殖追溯系统</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/petite-vue@0.4.1/dist/petite-vue.iife.js"></script>
 </head>
-<body>
+<body v-scope="FarmApp()" @vue:mounted="mounted">
+    <!-- 加载状态 -->
+    <div v-if="loading" class="loading-container">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>正在加载农场数据...</p>
+        </div>
+    </div>
+
+    <!-- 错误状态 -->
+    <div v-if="error" class="error-container">
+        <div class="error-message">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>{{ error }}</p>
+            <button @click="loadData" class="retry-button">重试</button>
+        </div>
+    </div>
+
     <!-- 主页面 -->
-    <div id="mainPage" class="page active">
+    <div v-if="!loading && !error" id="mainPage" class="page active">
     <!-- 顶部栏 -->
     <header class="header">
         <h1 class="header-title">掌上农场</h1>
@@ -21,7 +39,7 @@
         <div class="card">
             <div class="chicken-info">
                 <img src="https://cdn.sxy21.cn/static/imgs/1754275189429.png" alt="农家散养土鸡" class="chicken-image">
-                <h3 class="chicken-title">云南泽铁苗寨土鸡</h3>
+                <h3 class="chicken-title" v-text="farmData.product_info && farmData.product_info.标题 ? farmData.product_info.标题 : '加载中...'"></h3>
             </div>
         </div>
 
@@ -31,7 +49,7 @@
                 <h3 class="card-title">第一次查询时间</h3>
                 <div class="time-info">
                     <i class="fas fa-check-circle check-icon"></i>
-                    <span class="time-text">2025-07-01 18:45:16</span>
+                    <span class="time-text" v-text="farmData.product_info && farmData.product_info.第一次查询时间 ? farmData.product_info.第一次查询时间 : '加载中...'"></span>
                 </div>
             </div>
         </div>
@@ -71,10 +89,10 @@
                 <div class="feeding-records">
                     <h3 class="card-title">喂养操作记录</h3>
                     <div class="record-grid">
-                        <div class="record-item clickable" onclick="navigateToFeedingRecords()">
+                        <div class="record-item clickable" @click="navigateToFeedingRecords()">
                             <span class="record-label">饲喂次数：</span>
                             <div>
-                                <span class="record-value">156 次</span>
+                                <span class="record-value" v-text="(farmData.statistics && farmData.statistics.feeding_count ? farmData.statistics.feeding_count : 0) + ' 次'"></span>
                                 <i class="fas fa-chevron-right arrow-icon"></i>
                             </div>
                         </div>
@@ -90,7 +108,7 @@
                 <img src="https://cdn.sxy21.cn/static/imgs/1754275237340.png" alt="实时监控画面" class="monitor-image">
                 <div class="address">
                     <i class="fas fa-map-marker-alt"></i>
-                    <span>云南省昆明市寻甸县金所乡泽铁村 188 号</span>
+                    <span v-text="farmData.product_info && farmData.product_info.鸡舍地址 ? farmData.product_info.鸡舍地址 : '加载中...'"></span>
                 </div>
             </div>
         </div>
@@ -99,25 +117,9 @@
         <div class="card">
             <h3 class="card-title">商品信息</h3>
             <div class="product-info">
-                <div class="info-row">
-                    <span class="info-label">商品名称：</span>
-                    <span class="info-value">农家散养土鸡</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">是否有机：</span>
-                    <span class="info-value">有机</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">国产/进口：</span>
-                    <span class="info-value">国产</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">饲养农户：</span>
-                    <span class="info-value">张三</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">养殖企业：</span>
-                    <span class="info-value">昆明远纳农业发展有限公司</span>
+                <div v-for="item in getProductInfoItems()" :key="item.index" class="info-row">
+                    <span class="info-label" v-text="item.label + '：'"></span>
+                    <span class="info-value" v-text="item.value"></span>
                 </div>
             </div>
         </div>
@@ -126,42 +128,23 @@
         <div class="card">
             <h3 class="card-title">养殖流程</h3>
             <div class="timeline">
-                <div class="timeline-item">
+                <div v-for="process in farmData.breeding_process ? farmData.breeding_process : []" :key="process.record_id" class="timeline-item">
                     <div class="timeline-dot"></div>
                     <div class="timeline-content">
                         <div class="timeline-stage">
-                            <img src="https://cdn.sxy21.cn/static/imgs/1754275907197.png" alt="进场" class="stage-image">
-                            <div class="image-badge">3</div>
+                            <img v-if="process.images && process.images.length > 0"
+                                 :src="getImageUrl(process.images[0])"
+                                 :alt="process.process_name"
+                                 class="stage-image">
+                            <img v-else
+                                 src="https://cdn.sxy21.cn/static/imgs/default-process.png"
+                                 :alt="process.process_name"
+                                 class="stage-image">
+                            <div v-if="process.images && process.images.length > 0" class="image-badge" v-text="process.images.length"></div>
                         </div>
                         <div class="timeline-info">
-                            <h4>进场</h4>
-                            <p>2024-06-12 00:00:00</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-dot"></div>
-                    <div class="timeline-content">
-                        <div class="timeline-stage">
-                            <img src="https://cdn.sxy21.cn/static/imgs/1754276280217.png" alt="身份绑定" class="stage-image">
-                            <div class="image-badge">5</div>
-                        </div>
-                        <div class="timeline-info">
-                            <h4>身份绑定</h4>
-                            <p>2025-08-01 11:35:45</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-dot"></div>
-                    <div class="timeline-content">
-                        <div class="timeline-stage">
-                            <img src="https://cdn.sxy21.cn/static/imgs/1754276022881.png" alt="出栏" class="stage-image">
-                            <div class="image-badge">2</div>
-                        </div>
-                        <div class="timeline-info">
-                            <h4>出栏</h4>
-                            <p>2025-02-14 10:45:02</p>
+                            <h4 v-text="process.process_name"></h4>
+                            <p v-text="process.operation_time_formatted || process.created_time_formatted || '时间未知'"></p>
                         </div>
                     </div>
                 </div>
@@ -192,100 +175,123 @@
     </div>
 
     <!-- 喂养操作记录页面 -->
-    <div id="feedingRecordsPage" class="page">
+    <div v-if="showFeedingRecords" id="feedingRecordsPage" class="page">
         <header class="page-header">
-            <button class="back-button" onclick="navigateToMain()">
+            <button class="back-button" @click="navigateToMain()">
                 <i class="fas fa-arrow-left"></i>
             </button>
             <h1 class="page-title">喂养操作记录</h1>
         </header>
 
         <div class="feeding-records-container">
-            <div class="feeding-record-item">
+            <div v-for="record in farmData.feeding_records ? farmData.feeding_records : []" :key="record.record_id" class="feeding-record-item">
                 <div class="record-header">
                     <div class="food-info">
-                        <div class="food-name">米糠</div>
-                        <div class="record-time">2025-01-02 08:30</div>
-                        <div class="operator-name">操作人：张三</div>
+                        <div class="food-name" v-text="record.food_name"></div>
+                        <div class="record-time" v-text="record.operation_time_formatted || record.created_time_formatted || '时间未知'"></div>
+                        <div class="operator-name" v-text="'操作人：' + (record.operator || '未知')"></div>
                     </div>
                     <div class="record-image">
-                        <img src="https://images.pexels.com/photos/1300355/pexels-photo-1300355.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop" alt="米糠喂养" class="record-photo" onclick="showImageGallery(1)">
-                        <div class="photo-count">3</div>
+                        <img v-if="record.images && record.images.length > 0"
+                             :src="getImageUrl(record.images[0])"
+                             :alt="record.food_name + '喂养'"
+                             class="record-photo"
+                             @click="showImageGallery(record.record_id)">
+                        <div v-if="record.images && record.images.length > 0" class="photo-count" v-text="record.images.length"></div>
+                        <div v-else class="no-image">无图片</div>
                     </div>
                 </div>
             </div>
 
-            <div class="feeding-record-item">
-                <div class="record-header">
-                    <div class="food-info">
-                        <div class="food-name">花生麸</div>
-                        <div class="record-time">2025-01-02 14:15</div>
-                        <div class="operator-name">操作人：李四</div>
-                    </div>
-                    <div class="record-image">
-                        <img src="https://images.pexels.com/photos/1300355/pexels-photo-1300355.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop" alt="花生麸喂养" class="record-photo" onclick="showImageGallery(2)">
-                        <div class="photo-count">2</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="feeding-record-item">
-                <div class="record-header">
-                    <div class="food-info">
-                        <div class="food-name">玉米</div>
-                        <div class="record-time">2025-01-02 18:45</div>
-                        <div class="operator-name">操作人：王五</div>
-                    </div>
-                    <div class="record-image">
-                        <div class="no-image">无图片</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="feeding-record-item">
-                <div class="record-header">
-                    <div class="food-info">
-                        <div class="food-name">稻谷</div>
-                        <div class="record-time">2025-01-03 07:20</div>
-                        <div class="operator-name">操作人：张三</div>
-                    </div>
-                    <div class="record-image">
-                        <img src="https://images.pexels.com/photos/1300355/pexels-photo-1300355.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop" alt="稻谷喂养" class="record-photo" onclick="showImageGallery(3)">
-                        <div class="photo-count">1</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="feeding-record-item">
-                <div class="record-header">
-                    <div class="food-info">
-                        <div class="food-name">草籽</div>
-                        <div class="record-time">2025-01-03 12:10</div>
-                        <div class="operator-name">操作人：赵六</div>
-                    </div>
-                    <div class="record-image">
-                        <img src="https://images.pexels.com/photos/1300355/pexels-photo-1300355.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop" alt="草籽喂养" class="record-photo" onclick="showImageGallery(4)">
-                        <div class="photo-count">4</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="feeding-record-item">
-                <div class="record-header">
-                    <div class="food-info">
-                        <div class="food-name">米糠</div>
-                        <div class="record-time">2025-01-03 16:30</div>
-                        <div class="operator-name">操作人：李四</div>
-                    </div>
-                    <div class="record-image">
-                        <img src="https://images.pexels.com/photos/1300355/pexels-photo-1300355.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop" alt="米糠喂养" class="record-photo" onclick="showImageGallery(5)">
-                        <div class="photo-count">2</div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
-    <script src="main.js"></script>
+    <script>
+        const { createApp } = PetiteVue;
+
+        function FarmApp() {
+            return {
+                loading: true,
+                error: null,
+                farmData: {},
+                showFeedingRecords: false,
+                productId: null,
+
+                mounted() {
+                    this.getProductIdFromUrl();
+                    this.loadData();
+                },
+
+                getProductIdFromUrl() {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    this.productId = urlParams.get('id') || 'recuT512gzx6yw'; // 默认值
+                },
+
+                async loadData() {
+                    this.loading = true;
+                    this.error = null;
+
+                    try {
+                        const response = await fetch(`/api/v1/farm/info?product_id=${this.productId}`);
+                        const result = await response.json();
+
+                        if (result.code === 0) {
+                            this.farmData = result.data;
+                        } else {
+                            this.error = result.message || '获取数据失败';
+                        }
+                    } catch (err) {
+                        this.error = '网络请求失败，请检查网络连接';
+                        console.error('API请求失败:', err);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                navigateToFeedingRecords() {
+                    this.showFeedingRecords = true;
+                },
+
+                navigateToMain() {
+                    this.showFeedingRecords = false;
+                },
+
+                getImageUrl(image) {
+                    if (typeof image === 'string') {
+                        return image;
+                    } else if (image && typeof image === 'object') {
+                        return image.url || image.tmp_url || image.name || '';
+                    }
+                    return '';
+                },
+
+                getProductInfoItems() {
+                    if (!this.farmData.product_info || !this.farmData.product_info.商品信息) {
+                        return [];
+                    }
+
+                    return this.farmData.product_info.商品信息.map(item => {
+                        const keys = Object.keys(item).filter(key => key !== 'index');
+                        const label = keys[0] || '';
+                        const value = item[label] || '';
+                        return {
+                            index: item.index,
+                            label: label,
+                            value: value
+                        };
+                    });
+                },
+
+                showImageGallery(recordId) {
+                    // 图片画廊功能，暂时只是日志输出
+                    console.log('显示图片画廊:', recordId);
+                }
+            };
+        }
+
+        createApp({
+            FarmApp
+        }).mount();
+    </script>
 </body>
 </html>
