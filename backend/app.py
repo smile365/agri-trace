@@ -36,6 +36,7 @@ def create_app():
             'version': '1.0.0',
             'endpoints': {
                 'products': '/api/v1/products',
+                'product_detail': '/api/v1/product/{id}',
                 'health': '/api/v1/health'
             }
         })

@@ -79,11 +79,102 @@ def get_products():
         
         return jsonify(error_response), 500
 
+@api_v1.route('/product/<string:product_id>', methods=['GET'])
+def get_product_detail(product_id):
+    """
+    获取单个产品详情
+
+    Args:
+        product_id: 产品ID（农户记录ID）
+
+    Returns:
+        JSON响应包含产品详情数据
+    """
+    try:
+        logger.info(f"开始获取产品详情，产品ID: {product_id}")
+
+        # 验证产品ID格式
+        if not product_id or len(product_id.strip()) == 0:
+            error_response = {
+                'code': 1,
+                'message': '产品ID不能为空',
+                'data': None
+            }
+            return jsonify(error_response), 400
+
+        # 从飞书获取农户详情
+        result = feishu_service.get_farmer_by_id(product_id.strip())
+
+        if result['success']:
+            farmer_data = result['data']
+
+            # 检查是否找到记录
+            if not farmer_data or not farmer_data.get('record_id'):
+                error_response = {
+                    'code': 1,
+                    'message': '未找到指定的产品',
+                    'data': None
+                }
+                return jsonify(error_response), 404
+
+            logger.info(f"成功获取产品详情: {farmer_data.get('farmer_name', '未知')}")
+
+            # 格式化响应数据
+            product_detail = {
+                'product_id': farmer_data['record_id'],
+                'product_name': farmer_data['farmer_name'],
+                'app_token': farmer_data['app_token'],
+                'auth_code': farmer_data['auth_code'],
+                'contact': farmer_data.get('contact', ''),
+                'address': farmer_data.get('address', ''),
+                'created_time': farmer_data['created_time'],
+                'last_modified_time': farmer_data['last_modified_time'],
+                'created_by': farmer_data.get('created_by'),
+                'last_modified_by': farmer_data.get('last_modified_by')
+            }
+
+            response_data = {
+                'code': 0,
+                'message': 'success',
+                'data': product_detail
+            }
+
+            return jsonify(response_data), 200
+        else:
+            logger.error(f"获取产品详情失败: {result['message']}")
+
+            # 判断是否为404错误
+            if '404' in result['message'] or 'not found' in result['message'].lower():
+                error_response = {
+                    'code': 1,
+                    'message': '未找到指定的产品',
+                    'data': None
+                }
+                return jsonify(error_response), 404
+            else:
+                error_response = {
+                    'code': 1,
+                    'message': result['message'],
+                    'data': None
+                }
+                return jsonify(error_response), 500
+
+    except Exception as e:
+        logger.error(f"获取产品详情异常: {str(e)}")
+
+        error_response = {
+            'code': 1,
+            'message': f'服务器内部错误: {str(e)}',
+            'data': None
+        }
+
+        return jsonify(error_response), 500
+
 @api_v1.route('/health', methods=['GET'])
 def health_check():
     """
     健康检查接口
-    
+
     Returns:
         JSON响应表示服务状态
     """
