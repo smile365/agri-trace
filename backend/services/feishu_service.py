@@ -12,12 +12,15 @@ from config import config
 
 class FeishuService:
     """飞书API服务类"""
-    
+
     def __init__(self):
         self.base_url = config.FEISHU_API_BASE_URL
         self.app_token = config.MASTER_APP_TOKEN
         self.personal_token = config.MASTER_PERSONAL_BASE_TOKEN
         self.table_id = config.MASTER_TABLE_ID
+
+        # 自定义数据表处理器注册表
+        self._custom_processors = {}
         
     def _get_headers(self) -> Dict[str, str]:
         """获取请求头"""
@@ -370,6 +373,215 @@ class FeishuService:
                 'message': f'处理失败: {str(e)}'
             }
 
+    def _process_product_table(self, records: List[Dict]) -> Dict:
+        """
+        处理商品表数据
+
+        Args:
+            records: 商品表记录列表
+
+        Returns:
+            处理后的商品信息字典
+        """
+        product_data = {}
+        for record in records:
+            fields = record.get('fields', {})
+            name = fields.get('名称', '')
+            text = fields.get('文本', '')
+            image = fields.get('图片', [])
+
+            if name and text:
+                product_data[name] = {
+                    'value': text,
+                    'images': image if isinstance(image, list) else []
+                }
+
+        return product_data
+
+    def _process_feeding_records_table(self, records: List[Dict]) -> List[Dict]:
+        """
+        处理饲喂记录表数据
+
+        Args:
+            records: 饲喂记录表记录列表
+
+        Returns:
+            处理后的饲喂记录列表
+        """
+        feeding_records = []
+        for record in records:
+            fields = record.get('fields', {})
+            feeding_record = {
+                'record_id': record.get('record_id'),
+                'food_name': fields.get('名称', ''),
+                'operator': fields.get('操作人', ''),
+                'operation_time': fields.get('操作时间'),
+                'created_time': fields.get('创建'),
+                'updated_time': fields.get('更新'),
+                'images': fields.get('图片', []) if isinstance(fields.get('图片'), list) else [],
+                'description': fields.get('描述', ''),
+                'amount': fields.get('用量', ''),
+                'location': fields.get('位置', '')
+            }
+            feeding_records.append(feeding_record)
+
+        return feeding_records
+
+    def _process_breeding_process_table(self, records: List[Dict]) -> List[Dict]:
+        """
+        处理养殖流程表数据
+
+        Args:
+            records: 养殖流程表记录列表
+
+        Returns:
+            处理后的养殖流程列表
+        """
+        breeding_process = []
+        for record in records:
+            fields = record.get('fields', {})
+            process_record = {
+                'record_id': record.get('record_id'),
+                'process_name': fields.get('名称', ''),
+                'operation_time': fields.get('操作时间'),
+                'created_time': fields.get('创建'),
+                'updated_time': fields.get('更新'),
+                'images': fields.get('图片', []) if isinstance(fields.get('图片'), list) else [],
+                'description': fields.get('描述', ''),
+                'status': fields.get('状态', ''),
+                'operator': fields.get('操作人', ''),
+                'location': fields.get('位置', '')
+            }
+            breeding_process.append(process_record)
+
+        return breeding_process
+
+    def _process_unknown_table(self, table_name: str, records: List[Dict]) -> List[Dict]:
+        """
+        处理未知类型的数据表
+
+        Args:
+            table_name: 数据表名称
+            records: 记录列表
+
+        Returns:
+            处理后的记录列表
+        """
+        processed_records = []
+        for record in records:
+            fields = record.get('fields', {})
+            processed_record = {
+                'record_id': record.get('record_id'),
+                'table_name': table_name,
+                'fields': fields,
+                'created_time': record.get('created_time'),
+                'last_modified_time': record.get('last_modified_time')
+            }
+            processed_records.append(processed_record)
+
+        return processed_records
+
+    def register_table_processor(self, table_name: str, processor_func):
+        """
+        注册自定义数据表处理器
+
+        Args:
+            table_name: 数据表名称
+            processor_func: 处理器函数，接收records参数，返回处理后的数据
+        """
+        self._custom_processors[table_name] = processor_func
+
+    def unregister_table_processor(self, table_name: str):
+        """
+        取消注册数据表处理器
+
+        Args:
+            table_name: 数据表名称
+        """
+        if table_name in self._custom_processors:
+            del self._custom_processors[table_name]
+
+    def get_registered_processors(self) -> Dict:
+        """
+        获取所有已注册的处理器
+
+        Returns:
+            处理器字典
+        """
+        built_in_processors = {
+            '商品': self._process_product_table,
+            '饲喂记录': self._process_feeding_records_table,
+            '养殖流程': self._process_breeding_process_table,
+            'product': self._process_product_table,
+            'feeding': self._process_feeding_records_table,
+            'breeding': self._process_breeding_process_table
+        }
+
+        # 合并内置处理器和自定义处理器
+        all_processors = built_in_processors.copy()
+        all_processors.update(self._custom_processors)
+
+        return all_processors
+
+    def _get_table_processor(self, table_name: str):
+        """
+        获取数据表处理器
+
+        Args:
+            table_name: 数据表名称
+
+        Returns:
+            对应的处理器方法
+        """
+        # 获取所有已注册的处理器
+        all_processors = self.get_registered_processors()
+        return all_processors.get(table_name)
+
+    def _is_known_table(self, table_name: str) -> bool:
+        """
+        检查是否为已知的数据表类型
+
+        Args:
+            table_name: 数据表名称
+
+        Returns:
+            是否为已知类型
+        """
+        all_processors = self.get_registered_processors()
+        return table_name in all_processors
+
+    def _calculate_statistics(self, complete_info: Dict) -> Dict:
+        """
+        计算统计信息
+
+        Args:
+            complete_info: 完整信息字典
+
+        Returns:
+            统计信息字典
+        """
+        statistics = {
+            'feeding_count': len(complete_info.get('feeding_records', [])),
+            'process_count': len(complete_info.get('breeding_process', [])),
+            'product_fields_count': len(complete_info.get('product_info', {})),
+            'other_tables_count': 0,
+            'total_records': 0
+        }
+
+        # 计算其他表的记录数
+        other_tables = complete_info.get('other_tables', {})
+        for table_name, records in other_tables.items():
+            statistics['other_tables_count'] += len(records)
+
+        # 计算总记录数
+        statistics['total_records'] = (
+            statistics['feeding_count'] +
+            statistics['process_count'] +
+            statistics['other_tables_count']
+        )
+
+        return statistics
+
     def get_farm_complete_info(self, product_id: str) -> Dict:
         """
         获取农户的完整信息，包括商品信息、饲喂记录、养殖流程等
@@ -398,10 +610,7 @@ class FeishuService:
             'product_info': {},
             'feeding_records': [],
             'breeding_process': [],
-            'statistics': {
-                'feeding_count': 0,
-                'process_count': 0
-            }
+            'other_tables': {}
         }
 
         # 获取各个数据表的数据
@@ -415,59 +624,27 @@ class FeishuService:
             if records_result['success']:
                 records = records_result['data'].get('items', [])
 
-                if table_name == '商品':
-                    # 处理商品信息
-                    product_data = {}
-                    for record in records:
-                        fields = record.get('fields', {})
-                        name = fields.get('名称', '')
-                        text = fields.get('文本', '')
-                        image = fields.get('图片', [])
+                # 获取对应的处理器
+                processor = self._get_table_processor(table_name)
 
-                        if name and text:
-                            product_data[name] = {
-                                'value': text,
-                                'images': image if isinstance(image, list) else []
-                            }
+                if processor and self._is_known_table(table_name):
+                    # 使用专用处理器处理已知类型的数据表
+                    processed_data = processor(records)
 
-                    complete_info['product_info'] = product_data
+                    # 根据表名存储处理后的数据
+                    if table_name in ['商品', 'product']:
+                        complete_info['product_info'] = processed_data
+                    elif table_name in ['饲喂记录', 'feeding']:
+                        complete_info['feeding_records'] = processed_data
+                    elif table_name in ['养殖流程', 'breeding']:
+                        complete_info['breeding_process'] = processed_data
+                else:
+                    # 处理未知类型的数据表
+                    processed_data = self._process_unknown_table(table_name, records)
+                    complete_info['other_tables'][table_name] = processed_data
 
-                elif table_name == '饲喂记录':
-                    # 处理饲喂记录
-                    feeding_records = []
-                    for record in records:
-                        fields = record.get('fields', {})
-                        feeding_record = {
-                            'record_id': record.get('record_id'),
-                            'food_name': fields.get('名称', ''),
-                            'operator': fields.get('操作人', ''),
-                            'operation_time': fields.get('操作时间'),
-                            'created_time': fields.get('创建'),
-                            'updated_time': fields.get('更新'),
-                            'images': fields.get('图片', []) if isinstance(fields.get('图片'), list) else []
-                        }
-                        feeding_records.append(feeding_record)
-
-                    complete_info['feeding_records'] = feeding_records
-                    complete_info['statistics']['feeding_count'] = len(feeding_records)
-
-                elif table_name == '养殖流程':
-                    # 处理养殖流程
-                    breeding_process = []
-                    for record in records:
-                        fields = record.get('fields', {})
-                        process_record = {
-                            'record_id': record.get('record_id'),
-                            'process_name': fields.get('名称', ''),
-                            'operation_time': fields.get('操作时间'),
-                            'created_time': fields.get('创建'),
-                            'updated_time': fields.get('更新'),
-                            'images': fields.get('图片', []) if isinstance(fields.get('图片'), list) else []
-                        }
-                        breeding_process.append(process_record)
-
-                    complete_info['breeding_process'] = breeding_process
-                    complete_info['statistics']['process_count'] = len(breeding_process)
+        # 计算统计信息
+        complete_info['statistics'] = self._calculate_statistics(complete_info)
 
         return {
             'success': True,
