@@ -384,17 +384,82 @@ class FeishuService:
             处理后的商品信息字典
         """
         product_data = {}
+        grouped_items = {}  # 存储分组数据
+
         for record in records:
             fields = record.get('fields', {})
             name = fields.get('名称', '')
+            group = fields.get('分组', '').strip()
             text = fields.get('文本', '')
             image = fields.get('图片', [])
+            order = fields.get('顺序', 0)
 
-            if name and text:
-                product_data[name] = {
-                    'value': text,
-                    'images': image if isinstance(image, list) else []
+            # 确保图片是列表格式
+            if not isinstance(image, list):
+                image = []
+
+            # 提取图片值的辅助函数
+            def get_image_value(images):
+                if images and len(images) > 0:
+                    # 如果图片是字典格式，提取URL或文件信息
+                    img = images[0]
+                    if isinstance(img, dict):
+                        return img.get('url', img.get('tmp_url', img.get('name', img)))
+                    else:
+                        return img
+                return ''
+
+            # 根据分组字段是否为空进行不同处理
+            if group:
+                # 分组不为空：组合成列表格式
+                if group not in grouped_items:
+                    grouped_items[group] = []
+
+                # 构建分组项数据
+                # 优先取文本，文本为空取图片，都为空则为空
+                if text:
+                    value = text
+                elif image:
+                    value = get_image_value(image)
+                else:
+                    value = ''
+
+                item_data = {
+                    'index': len(grouped_items[group]) + 1,
+                    name: value
                 }
+
+                # 添加排序信息用于后续排序
+                item_data['_order'] = order if isinstance(order, (int, float)) else 999
+
+                grouped_items[group].append(item_data)
+            else:
+                # 分组为空：直接组合成键值对
+                if name:
+                    # 优先取文本，文本为空取图片，都为空则为空
+                    if text:
+                        value = text
+                    elif image:
+                        # 对于图片字段，保持原始格式以便前端处理
+                        value = image[0] if image else ''
+                    else:
+                        value = ''
+
+                    product_data[name] = value
+
+        # 处理分组数据：按顺序排序并重新分配index
+        for group_name, items in grouped_items.items():
+            # 按顺序字段排序
+            items.sort(key=lambda x: x.get('_order', 999))
+
+            # 重新分配index并移除临时排序字段
+            for i, item in enumerate(items, 1):
+                item['index'] = i
+                if '_order' in item:
+                    del item['_order']
+
+            # 将分组数据添加到产品数据中
+            product_data[group_name] = items
 
         return product_data
 
