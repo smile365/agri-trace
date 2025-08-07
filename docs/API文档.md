@@ -311,7 +311,34 @@
 - `404`: 产品不存在或数据表不存在
 - `500`: 服务器内部错误
 
-### 6. 健康检查
+### 6. 图片代理接口
+
+**接口地址**: `GET /api/v1/img/{file_token}`
+
+**路径参数**:
+- `file_token`: 飞书文件令牌（必填）
+
+**功能说明**: 代理飞书图片下载，自动添加认证头，支持在HTML中直接使用
+
+**使用示例**:
+```html
+<!-- 在HTML中直接使用 -->
+<img src="/api/v1/img/GDiZb3UvJos7XAxm1f8crccwnng" alt="图片">
+```
+
+**响应特性**:
+- 流式传输图片数据
+- 自动设置正确的Content-Type
+- 支持浏览器缓存（1小时）
+- 跨域访问支持
+
+**错误响应**:
+- `400`: 飞书API返回错误
+- `404`: 文件不存在
+- `500`: 服务器内部错误
+- `504`: 请求超时
+
+### 7. 健康检查
 
 **接口地址**: `GET /api/v1/health`
 
@@ -348,6 +375,9 @@ curl -X GET "http://127.0.0.1:5000/api/v1/farm/info?product_id=recuT512gzx6yw"
 
 # 获取数据表字段定义
 curl -X GET "http://127.0.0.1:5000/api/v1/farm/table/fields?product_id=recuT512gzx6yw&tname=商品"
+
+# 图片代理（下载图片）
+curl -X GET "http://127.0.0.1:5000/api/v1/img/GDiZb3UvJos7XAxm1f8crccwnng" --output image.png
 
 # 健康检查
 curl -X GET "http://127.0.0.1:5000/api/v1/health"

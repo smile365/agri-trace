@@ -5,9 +5,10 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, Response
 from services.feishu_service import feishu_service
 import logging
+import requests
 
 # 创建API蓝图
 api_v1 = Blueprint('api_v1', __name__, url_prefix='/api/v1')
@@ -502,3 +503,87 @@ def health_check():
             'version': '1.0.0'
         }
     }), 200
+
+@api_v1.route('/img/<file_token>', methods=['GET'])
+def proxy_image(file_token):
+    """
+    图片代理接口
+
+    Args:
+        file_token: 飞书文件令牌
+
+    Returns:
+        图片数据流
+    """
+    try:
+        logger.info(f"开始代理图片，文件令牌: {file_token}")
+
+        # 构建飞书图片下载URL - 使用base-api域名
+        feishu_url = f"https://base-api.feishu.cn/open-apis/drive/v1/medias/{file_token}/download"
+
+        # 使用FeishuService的认证头
+        headers = feishu_service._get_headers()
+        headers['User-Agent'] = 'Farm-Traceability-System/1.0'
+
+        logger.info(f"使用认证头: Authorization: Bearer {feishu_service.personal_token[:20]}...")
+
+        # 发起代理请求
+        logger.info(f"向飞书请求图片: {feishu_url}")
+        response = requests.get(feishu_url, headers=headers, stream=True, timeout=30)
+
+        if response.status_code == 200:
+            # 获取图片的Content-Type
+            content_type = response.headers.get('Content-Type', 'image/jpeg')
+            content_length = response.headers.get('Content-Length')
+
+            logger.info(f"成功获取图片，类型: {content_type}, 大小: {content_length}")
+
+            # 创建响应对象，流式传输图片数据
+            def generate():
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        yield chunk
+
+            # 设置响应头
+            response_headers = {
+                'Content-Type': content_type,
+                'Cache-Control': 'public, max-age=3600',  # 缓存1小时
+                'Access-Control-Allow-Origin': '*'  # 允许跨域
+            }
+
+            if content_length:
+                response_headers['Content-Length'] = content_length
+
+            return Response(generate(), headers=response_headers)
+
+        else:
+            logger.error(f"飞书图片下载失败，状态码: {response.status_code}, 响应: {response.text}")
+            return jsonify({
+                'code': 1,
+                'message': f'图片下载失败，状态码: {response.status_code}',
+                'data': None
+            }), response.status_code
+
+    except requests.exceptions.Timeout:
+        logger.error(f"图片下载超时: {file_token}")
+        return jsonify({
+            'code': 1,
+            'message': '图片下载超时',
+            'data': None
+        }), 504
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"图片下载网络错误: {str(e)}")
+        return jsonify({
+            'code': 1,
+            'message': f'网络请求失败: {str(e)}',
+            'data': None
+        }), 500
+
+    except Exception as e:
+        logger.error(f"图片代理失败: {str(e)}")
+        return jsonify({
+            'code': 1,
+            'message': f'图片代理失败: {str(e)}',
+            'data': None
+        }), 500

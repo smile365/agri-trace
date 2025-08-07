@@ -44,10 +44,12 @@ def create_app():
                 'farm_tables': '/api/v1/farm/tables?product_id={id}',
                 'farm_info': '/api/v1/farm/info?product_id={id}',
                 'table_fields': '/api/v1/farm/table/fields?product_id={id}&tname={table_name}',
+                'image_proxy': '/api/v1/img/{file_token}',
                 'health': '/api/v1/health'
             },
             'frontend': {
-                'page': '/index.html?id={product_id}'
+                'page': '/index.html?id={product_id}',
+                'test': '/test.html'
             }
         })
 
@@ -60,6 +62,11 @@ def create_app():
     @app.route('/test.html')
     def test_page():
         return send_from_directory(app.template_folder, 'test.html')
+
+    # 图片测试页面路由
+    @app.route('/image-test.html')
+    def image_test_page():
+        return send_from_directory(app.template_folder, 'image-test.html')
 
     # 静态文件路由
     @app.route('/static/<path:filename>')

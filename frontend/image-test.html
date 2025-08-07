@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片代理测试</title>
+    <script src="https://unpkg.com/petite-vue@0.4.1/dist/petite-vue.iife.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .image-container { margin: 10px 0; }
+        .test-image { max-width: 300px; height: auto; border: 1px solid #ccc; }
+        .loading { color: #666; }
+        .error { color: #e74c3c; }
+        .success { color: #27ae60; }
+        .url-display { background: #f5f5f5; padding: 10px; border-radius: 3px; word-break: break-all; }
+    </style>
+</head>
+<body v-scope="ImageTestApp()" @vue:mounted="mounted">
+    <h1>图片代理功能测试</h1>
+    
+    <div class="test-section">
+        <h2>API数据获取</h2>
+        <div v-if="loading" class="loading">正在获取农场数据...</div>
+        <div v-if="error" class="error">错误: {{ error }}</div>
+        <div v-if="!loading && !error" class="success">✓ 数据获取成功</div>
+    </div>
+    
+    <div class="test-section" v-if="farmData && farmData.product_info">
+        <h2>首图测试</h2>
+        <div v-if="farmData.product_info.首图">
+            <h3>原始图片数据</h3>
+            <pre>{{ JSON.stringify(farmData.product_info.首图, null, 2) }}</pre>
+            
+            <h3>代理URL</h3>
+            <div class="url-display">{{ getImageUrl(farmData.product_info.首图) }}</div>
+            
+            <h3>图片显示测试</h3>
+            <div class="image-container">
+                <img :src="getImageUrl(farmData.product_info.首图)" 
+                     alt="首图测试" 
+                     class="test-image"
+                     @load="onImageLoad"
+                     @error="onImageError">
+            </div>
+            
+            <div v-if="imageStatus === 'loading'" class="loading">图片加载中...</div>
+            <div v-if="imageStatus === 'success'" class="success">✓ 图片加载成功</div>
+            <div v-if="imageStatus === 'error'" class="error">✗ 图片加载失败</div>
+        </div>
+        <div v-else>
+            <p>没有找到首图数据</p>
+        </div>
+    </div>
+    
+    <div class="test-section" v-if="farmData && farmData.feeding_records">
+        <h2>饲喂记录图片测试</h2>
+        <div v-for="record in farmData.feeding_records" :key="record.record_id">
+            <h3>{{ record.food_name }} - {{ record.operation_time_formatted }}</h3>
+            <div v-if="record.images && record.images.length > 0">
+                <div v-for="(image, index) in record.images" :key="index" class="image-container">
+                    <h4>图片 {{ index + 1 }}</h4>
+                    <div class="url-display">{{ getImageUrl(image) }}</div>
+                    <img :src="getImageUrl(image)" 
+                         :alt="record.food_name + ' 图片 ' + (index + 1)" 
+                         class="test-image">
+                </div>
+            </div>
+            <div v-else>
+                <p>该记录没有图片</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="test-section" v-if="farmData && farmData.breeding_process">
+        <h2>养殖流程图片测试</h2>
+        <div v-for="process in farmData.breeding_process" :key="process.record_id">
+            <h3>{{ process.process_name }} - {{ process.operation_time_formatted }}</h3>
+            <div v-if="process.images && process.images.length > 0">
+                <div v-for="(image, index) in process.images" :key="index" class="image-container">
+                    <h4>图片 {{ index + 1 }}</h4>
+                    <div class="url-display">{{ getImageUrl(image) }}</div>
+                    <img :src="getImageUrl(image)" 
+                         :alt="process.process_name + ' 图片 ' + (index + 1)" 
+                         class="test-image">
+                </div>
+            </div>
+            <div v-else>
+                <p>该流程没有图片</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = PetiteVue;
+
+        function ImageTestApp() {
+            return {
+                loading: true,
+                error: null,
+                farmData: null,
+                imageStatus: 'loading',
+
+                mounted() {
+                    this.loadData();
+                },
+
+                async loadData() {
+                    this.loading = true;
+                    this.error = null;
+                    
+                    try {
+                        const response = await fetch('/api/v1/farm/info?product_id=recuT512gzx6yw');
+                        const result = await response.json();
+                        
+                        if (result.code === 0) {
+                            this.farmData = result.data;
+                        } else {
+                            this.error = result.message || '获取数据失败';
+                        }
+                    } catch (err) {
+                        this.error = '网络请求失败: ' + err.message;
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                getImageUrl(image) {
+                    if (typeof image === 'string') {
+                        return image;
+                    } else if (image && typeof image === 'object') {
+                        // 如果有file_token，使用代理接口
+                        if (image.file_token) {
+                            return `/api/v1/img/${image.file_token}`;
+                        }
+                        // 否则使用原始URL（如果有的话）
+                        return image.url || image.tmp_url || image.name || '';
+                    }
+                    return '';
+                },
+
+                onImageLoad() {
+                    this.imageStatus = 'success';
+                },
+
+                onImageError() {
+                    this.imageStatus = 'error';
+                }
+            };
+        }
+
+        createApp({
+            ImageTestApp
+        }).mount();
+    </script>
+</body>
+</html>
