@@ -7,6 +7,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from flask import Blueprint, jsonify, request, Response
 from services.feishu_service import feishu_service
+from utils.dht11_processor import decode_dht11_message
 import logging
 import requests
 
@@ -587,3 +588,40 @@ def proxy_image(file_token):
             'message': f'图片代理失败: {str(e)}',
             'data': None
         }), 500
+
+
+
+@api_v1.route('/dht/weather', methods=['GET'])
+def baidu_verify():
+    return 'e22c1b37c4260ac0fe1a2fae229f5eb1e99379d7286192e351d0e9aad29a5298'
+
+
+@api_v1.route('/dht/weather', methods=['POST'])
+def show_weather_info():
+    """
+    接受DHT11传感器数据并解码处理
+
+    接收包含base64编码温湿度数据的JSON，解码后返回结构化的温湿度信息
+
+    Returns:
+        JSON响应包含解码后的DHT11传感器数据
+    """
+    try:
+        data = request.get_json()
+        humidity_temperature = decode_dht11_message(data)
+        data['message'] = humidity_temperature
+        logger.info(f"解码后的DHT11数据: {data}")
+        return jsonify({
+            'code': 200,
+            'message': data['message'],
+            'data': None
+        }), 200
+    except Exception as e:
+        logger.error(f"DHT11数据解码失败: {str(e)}")
+        return jsonify({
+            'code': 1,
+            'message': f'数据解码失败: {str(e)}',
+            'data': None
+        }), 400
+
+
