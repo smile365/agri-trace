@@ -7,6 +7,81 @@
     <link rel="stylesheet" href="../static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://unpkg.com/petite-vue@0.4.1/dist/petite-vue.iife.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.js"></script>
+    <style>
+        /* FLV播放器样式 */
+        .player {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #111;
+            margin-bottom: 10px;
+        }
+        .player video {
+            width: 100%; 
+            height: 100%; 
+            object-fit: contain; 
+            background: #000;
+        }
+        /* 悬浮时显示控制层；未播放时常显 */
+        .overlay {
+            position: absolute; 
+            inset: 0;
+            display: grid; 
+            place-items: center;
+            pointer-events: none; /* 默认不拦截事件，按钮本身开启事件 */
+            transition: opacity .18s ease;
+            opacity: 0;
+        }
+        .player:hover .overlay { opacity: 1; }
+        .overlay.show { opacity: 1; } /* 初始未播放时可见 */
+        .btn {
+            pointer-events: auto;
+            width: 64px; 
+            height: 64px;
+            border-radius: 999px;
+            background: rgba(0,0,0,.45);
+            backdrop-filter: blur(2px);
+            border: 1px solid rgba(255,255,255,.15);
+            display: grid; 
+            place-items: center;
+            cursor: pointer;
+            transition: transform .12s ease, background .2s ease;
+        }
+        .btn:hover { 
+            transform: scale(1.06); 
+            background: rgba(0,0,0,.55); 
+        }
+        .btn svg { 
+            width: 30px; 
+            height: 30px; 
+            fill: #fff; 
+        }
+        .badge {
+            position: absolute; 
+            top: 10px; 
+            left: 10px;
+            background: rgba(0,0,0,.55); 
+            color: #fff; 
+            font-size: 12px;
+            padding: 4px 8px; 
+            border-radius: 999px; 
+            letter-spacing: .5px;
+            user-select: none;
+        }
+        .err {
+            position: absolute; 
+            inset: auto 12px 12px 12px;
+            background: rgba(0,0,0,.6); 
+            color: #fff; 
+            padding: 10px 12px;
+            border-radius: 10px; 
+            font-size: 13px; 
+            line-height: 1.4;
+        }
+    </style>
 </head>
 <body v-scope="FarmApp()" @vue:mounted="mounted">
     <!-- 加载状态 -->
@@ -111,8 +186,39 @@
         <!-- 监控画面 -->
         <div class="card">
             <h3 class="card-title">实时监控</h3>
-            <div class="monitor-section">
-                <video controls autoplay></video>
+            <div class="monitor-section" v-scope="VideoPlayer()">
+                <div class="player" 
+                     @mouseenter="hovered = true"
+                     @mouseleave="hovered = false">
+                    <video ref="video"
+                           playsinline
+                           preload="auto"
+                           @play="playing = true"
+                           @pause="playing = false"
+                           @ended="playing = false">
+                    </video>
+                    
+                    
+                    <!-- 悬浮控制层（未播放时常显；播放中仅悬浮时显） -->
+                    <div class="overlay" :class="{ show: !playing }">
+                        <button class="btn" @click="togglePlay" :title="playing ? '暂停' : '播放'">
+                            <!-- 播放图标 ▶ -->
+                            <template v-if="!playing">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M8 5v14l11-7z"></path>
+                                </svg>
+                            </template>
+                            <!-- 暂停图标 ⏸ -->
+                            <template v-else>
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M6 5h4v14H6zm8 0h4v14h-4z"></path>
+                                </svg>
+                            </template>
+                        </button>
+                    </div>
+                    
+    
+                </div>
                 <div class="address">
                     <i class="fas fa-map-marker-alt"></i>
                     <span v-text="farmData.product_info && farmData.product_info.鸡舍地址 ? farmData.product_info.鸡舍地址 : '加载中...'"></span>
@@ -212,9 +318,80 @@
 
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.6.2/dist/mpegts.js"></script>
     <script>
         const { createApp } = PetiteVue;
+        
+        const FLV_URL = 'http://192.168.15.250:8080/live/livestream-a.flv';
+        
+        function VideoPlayer() {
+            return {
+                player: null,
+                playing: false,
+                hovered: false,
+                error: '',
+                async ensurePlayerLoaded() {
+                    if (this.player || !window.mpegts || !mpegts.isSupported()) return;
+
+                    try {
+                        this.player = mpegts.createPlayer({
+                            type: 'flv',
+                            isLive: true,
+                            url: FLV_URL,
+                            // 直播常见设置：减小缓冲，尽量低延迟
+                            enableStashBuffer: false,
+                            stashInitialSize: 128
+                        }, {
+                            // 可按需微调
+                            liveBufferLatencyChasing: true,
+                        });
+
+                        this.player.attachMediaElement(this.$refs.video);
+                        this.player.load();
+
+                        // 监听底层错误，便于反馈
+                        this.player.on(mpegts.Events.ERROR, (type, detail) => {
+                            this.error = `${type}${detail ? ' - ' + detail : ''}`;
+                        });
+                    } catch (e) {
+                        this.error = String(e?.message || e);
+                    }
+                },
+                async togglePlay() {
+                    try {
+                        await this.ensurePlayerLoaded();
+                        if (!this.player) {
+                            this.error = '当前环境不支持 mpegts.js（可能是浏览器不兼容）。';
+                            return;
+                        }
+                        if (this.playing) {
+                            this.$refs.video.pause();
+                        } else {
+                            // 某些浏览器需用户手势触发；我们在按钮点击里触发
+                            await this.$refs.video.play();
+                        }
+                    } catch (e) {
+                        this.error = String(e?.message || e);
+                    }
+                },
+                mounted() {
+                    // 预加载流但不自动播放，可减少首次点击延迟
+                    this.ensurePlayerLoaded();
+                    // 页面隐藏时自动暂停，返回时不自动播放
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.hidden && this.playing) this.$refs.video.pause();
+                    });
+                    // 页面卸载时清理
+                    window.addEventListener('beforeunload', () => this.cleanup());
+                },
+                cleanup() {
+                    try {
+                        this.player?.destroy();
+                    } catch (_) {}
+                    this.player = null;
+                },
+                unmounted() { this.cleanup(); }
+            };
+        }
 
         function FarmApp() {
             return {

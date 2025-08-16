@@ -1,364 +1,181 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>掌上农场 - 土鸡养殖追溯系统</title>
-    <link rel="stylesheet" href="../static/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://unpkg.com/petite-vue@0.4.1/dist/petite-vue.iife.js"></script>
+  <meta charset="UTF-8" />
+  <title>FLV 直播播放 - petite-vue + mpegts.js</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- petite-vue & mpegts.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/petite-vue@0.4.1/dist/petite-vue.iife.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.js"></script>
+  <style>
+    :root { --radius: 999px; --overlay-bg: rgba(0,0,0,.45); }
+    body { margin: 0; background:#0b0b0b; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+    .wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    .player {
+      width: min(96vw, 960px);
+      aspect-ratio: 16 / 9;
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      background:#111;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    video {
+      width: 100%; height: 100%; object-fit: contain; background: #000;
+    }
+    /* 悬浮时显示控制层；未播放时常显 */
+    .overlay {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      pointer-events: none; /* 默认不拦截事件，按钮本身开启事件 */
+      transition: opacity .18s ease;
+      opacity: 0;
+    }
+    .player:hover .overlay { opacity: 1; }
+    .overlay.show { opacity: 1; } /* 初始未播放时可见 */
+    .btn {
+      pointer-events: auto;
+      width: 84px; height: 84px;
+      border-radius: var(--radius);
+      background: var(--overlay-bg);
+      backdrop-filter: blur(2px);
+      border: 1px solid rgba(255,255,255,.15);
+      display: grid; place-items: center;
+      cursor: pointer;
+      transition: transform .12s ease, background .2s ease;
+    }
+    .btn:hover { transform: scale(1.06); background: rgba(0,0,0,.55); }
+    .btn svg { width: 40px; height: 40px; fill: #fff; }
+    .badge {
+      position: absolute; top: 10px; left: 10px;
+      background: rgba(0,0,0,.55); color:#fff; font-size: 12px;
+      padding: 4px 8px; border-radius: 999px; letter-spacing:.5px;
+      user-select: none;
+    }
+    .err {
+      position:absolute; inset:auto 12px 12px 12px;
+      background: rgba(0,0,0,.6); color:#fff; padding:10px 12px;
+      border-radius: 10px; font-size: 13px; line-height: 1.4;
+    }
+  </style>
 </head>
-<body v-scope="FarmApp()" @vue:mounted="mounted">
-    <!-- 加载状态 -->
-    <div v-if="loading" class="loading-container">
-        <div class="loading-spinner">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>正在加载农场数据...</p>
-        </div>
+<body>
+  <div class="wrap" v-scope="App()">
+    <div class="player"
+         @mouseenter="hovered = true"
+         @mouseleave="hovered = false">
+
+      <video ref="video"
+             playsinline
+             preload="auto"
+             @play="playing = true"
+             @pause="playing = false"
+             @ended="playing = false">
+      </video>
+
+      <!-- 直播标记 -->
+      <div class="badge">LIVE • FLV</div>
+
+      <!-- 悬浮控制层（未播放时常显；播放中仅悬浮时显） -->
+      <div class="overlay" :class="{ show: !playing }">
+        <button class="btn" @click="togglePlay" :title="playing ? '暂停' : '播放'">
+          <!-- 播放图标 ▶ -->
+          <template v-if="!playing">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 5v14l11-7z"></path>
+            </svg>
+          </template>
+          <!-- 暂停图标 ⏸ -->
+          <template v-else>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 5h4v14H6zm8 0h4v14h-4z"></path>
+            </svg>
+          </template>
+        </button>
+      </div>
+
+      <!-- 错误提示 -->
+      <div class="err" v-if="error">
+        播放出错：{{ error }}<br/>
+        请确认 FLV 地址可访问，或在浏览器中尝试手动刷新。
+      </div>
     </div>
+  </div>
 
-    <!-- 错误状态 -->
-    <div v-if="error" class="error-container">
-        <div class="error-message">
-            <i class="fas fa-exclamation-triangle"></i>
-            <p>{{ error }}</p>
-            <button @click="loadData" class="retry-button">重试</button>
-        </div>
-    </div>
+  <script>
+    const FLV_URL = 'http://192.168.15.250:8080/live/livestream-a.flv';
 
-    <!-- 主页面 -->
-    <div v-if="!loading && !error" id="mainPage" class="page active">
-    <!-- 顶部栏 -->
-    <header class="header">
-        <h1 class="header-title">掌上农场</h1>
-        <p class="header-subtitle">全程溯源 · 安全放心</p>
-    </header>
+    function App() {
+      return {
+        player: null,
+        playing: false,
+        hovered: false,
+        error: '',
+        async ensurePlayerLoaded() {
+          if (this.player || !window.mpegts || !mpegts.isSupported()) return;
 
-    <div class="container">
-        <!-- 用户信息区 -->
-        <div class="card">
-            <div class="chicken-info">
-                <img v-if="farmData.product_info && farmData.product_info.首图"
-                     :src="getImageUrl(farmData.product_info.首图)"
-                     alt="农家散养土鸡"
-                     class="chicken-image">
-                <img v-else
-                     src="https://cdn.sxy21.cn/static/imgs/1754275189429.png"
-                     alt="农家散养土鸡"
-                     class="chicken-image">
-                <h3 class="chicken-title" v-text="farmData.product_info && farmData.product_info.标题 ? farmData.product_info.标题 : '加载中...'"></h3>
-            </div>
-        </div>
+          try {
+            this.player = mpegts.createPlayer({
+              type: 'flv',
+              isLive: true,
+              url: FLV_URL,
+              // 直播常见设置：减小缓冲，尽量低延迟
+              enableStashBuffer: false,
+              stashInitialSize: 128
+            }, {
+              // 可按需微调
+              liveBufferLatencyChasing: true,
+            });
 
-        <!-- 首次查询时间 -->
-        <div class="card">
-            <div class="query-time">
-                <h3 class="card-title">第一次查询时间</h3>
-                <div class="time-info">
-                    <i class="fas fa-check-circle check-icon"></i>
-                    <span class="time-text" v-text="farmData.product_info && farmData.product_info.第一次查询时间 ? farmData.product_info.第一次查询时间 : '加载中...'"></span>
-                </div>
-            </div>
-        </div>
+            this.player.attachMediaElement(this.$refs.video);
+            this.player.load();
 
-        <!-- 运动步数 -->
-        <div class="card">
-            <h3 class="card-title">运动步数</h3>
-            <div class="steps-info">
-                <div class="total-steps">1,730,445 步</div>
-                <div class="steps-details">
-                    <div class="detail-item">
-                        <span class="label">活动记录天数：</span>
-                        <span class="value">71 天</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="label">日均步数：</span>
-                        <span class="value">23,211 步</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+            // 监听底层错误，便于反馈
+            this.player.on(mpegts.Events.ERROR, (type, detail) => {
+              this.error = `${type}${detail ? ' - ' + detail : ''}`;
+            });
+          } catch (e) {
+            this.error = String(e?.message || e);
+          }
+        },
+        async togglePlay() {
+          try {
+            await this.ensurePlayerLoaded();
+            if (!this.player) {
+              this.error = '当前环境不支持 mpegts.js（可能是浏览器不兼容）。';
+              return;
+            }
+            if (this.playing) {
+              this.$refs.video.pause();
+            } else {
+              // 某些浏览器需用户手势触发；我们在按钮点击里触发
+              await this.$refs.video.play();
+            }
+          } catch (e) {
+            this.error = String(e?.message || e);
+          }
+        },
+        mounted() {
+          // 预加载流但不自动播放，可减少首次点击延迟
+          this.ensurePlayerLoaded();
+          // 页面隐藏时自动暂停，返回时不自动播放
+          document.addEventListener('visibilitychange', () => {
+            if (document.hidden && this.playing) this.$refs.video.pause();
+          });
+          // 页面卸载时清理
+          window.addEventListener('beforeunload', () => this.cleanup());
+        },
+        cleanup() {
+          try {
+            this.player?.destroy();
+          } catch (_) {}
+          this.player = null;
+        },
+        unmounted() { this.cleanup(); }
+      };
+    }
 
-        <!-- 养殖环境 -->
-        <div class="card">
-            <h3 class="card-title">温度和湿度</h3>
-            <div class="environment-info">
-                <div class="temp-humidity">
-                    <div class="env-item">
-                        <i class="fas fa-thermometer-half"></i>
-                        <span class="env-value">27.9 ℃</span>
-                    </div>
-                    <div class="env-item">
-                        <i class="fas fa-tint"></i>
-                        <span class="env-value">63.0 %RH</span>
-                    </div>
-                </div>
-                <div class="feeding-records">
-                    <h3 class="card-title">喂养操作记录</h3>
-                    <div class="record-grid">
-                        <div class="record-item clickable" @click="navigateToFeedingRecords()">
-                            <span class="record-label">饲喂次数：</span>
-                            <div>
-                                <span class="record-value" v-text="(farmData.statistics && farmData.statistics.feeding_count ? farmData.statistics.feeding_count : 0) + ' 次'"></span>
-                                <i class="fas fa-chevron-right arrow-icon"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 监控画面 -->
-        <div class="card">
-            <h3 class="card-title">实时监控</h3>
-            <div class="monitor-section">
-                <video id="liveStream" controls autoplay>
-                </video>
-                <div class="address">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span v-text="farmData.product_info && farmData.product_info.鸡舍地址 ? farmData.product_info.鸡舍地址 : '加载中...'"></span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 商品信息 -->
-        <div class="card">
-            <h3 class="card-title">商品信息</h3>
-            <div class="product-info">
-                <div v-for="item in getProductInfoItems()" :key="item.index" class="info-row">
-                    <span class="info-label" v-text="item.label + '：'"></span>
-                    <span class="info-value" v-text="item.value"></span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 养殖流程 -->
-        <div class="card">
-            <h3 class="card-title">养殖流程</h3>
-            <div class="timeline">
-                <div v-for="process in farmData.breeding_process ? farmData.breeding_process : []" :key="process.record_id" class="timeline-item">
-                    <div class="timeline-dot"></div>
-                    <div class="timeline-content">
-                        <div class="timeline-stage">
-                            <img v-if="process.images && process.images.length > 0"
-                                 :src="getImageUrl(process.images[0])"
-                                 :alt="process.process_name"
-                                 class="stage-image">
-                            <img v-else
-                                 src="https://cdn.sxy21.cn/static/imgs/default-process.png"
-                                 :alt="process.process_name"
-                                 class="stage-image">
-                            <div v-if="process.images && process.images.length > 0" class="image-badge" v-text="process.images.length"></div>
-                        </div>
-                        <div class="timeline-info">
-                            <h4 v-text="process.process_name"></h4>
-                            <p v-text="process.operation_time_formatted || process.created_time_formatted || '时间未知'"></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 底部栏 -->
-    <footer class="footer">
-        <div class="footer-features">
-            <div class="feature-item">
-                <i class="fas fa-qrcode"></i>
-                <span>一物一码</span>
-            </div>
-            <div class="feature-item">
-                <i class="fas fa-eye"></i>
-                <span>信息透明</span>
-            </div>
-            <div class="feature-item">
-                <i class="fas fa-shield-alt"></i>
-                <span>拒绝假货</span>
-            </div>
-        </div>
-        <div class="footer-copyright">
-            <p>数据由参与方提供，溯源系统提供技术支持</p>
-        </div>
-    </footer>
-    </div>
-
-    <!-- 喂养操作记录页面 -->
-    <div v-if="showFeedingRecords" id="feedingRecordsPage" class="page">
-        <header class="page-header">
-            <button class="back-button" @click="navigateToMain()">
-                <i class="fas fa-arrow-left"></i>
-            </button>
-            <h1 class="page-title">喂养操作记录</h1>
-        </header>
-
-        <div class="feeding-records-container">
-            <div v-for="record in farmData.feeding_records ? farmData.feeding_records : []" :key="record.record_id" class="feeding-record-item">
-                <div class="record-header">
-                    <div class="food-info">
-                        <div class="food-name" v-text="record.food_name"></div>
-                        <div class="record-time" v-text="record.operation_time_formatted || record.created_time_formatted || '时间未知'"></div>
-                        <div class="operator-name" v-text="'操作人：' + (record.operator || '未知')"></div>
-                    </div>
-                    <div class="record-image">
-                        <img v-if="record.images && record.images.length > 0"
-                             :src="getImageUrl(record.images[0])"
-                             :alt="record.food_name + '喂养'"
-                             class="record-photo"
-                             @click="showImageGallery(record.record_id)">
-                        <div v-if="record.images && record.images.length > 0" class="photo-count" v-text="record.images.length"></div>
-                        <div v-else class="no-image">无图片</div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.6.2/dist/mpegts.js"></script>
-<script>
-        const { createApp } = PetiteVue;
-
-        function FarmApp() {
-            return {
-                loading: true,
-                error: null,
-                farmData: {},
-                showFeedingRecords: false,
-                productId: null,
-
-                mounted() {
-                    this.getProductIdFromUrl();
-                    this.loadData();
-                    this.initPlayer();
-                },
-
-                destroyed() {
-                    this.destroyPlayer();
-                },
-
-                methods: {
-                    initPlayer() {
-                        if (mpegts && mpegts.isSupported()) {
-                            this.player = mpegts.createPlayer({
-                                type: 'flv',
-                                url: 'http://192.168.15.250:8080/live/livestream-a.flv',
-                                isLive: true,
-                                enableStashBuffer: false
-                            });
-                            this.player.attachMediaElement(document.getElementById('liveStreamVideo'));
-                            this.player.load();
-                        }
-                    },
-
-                    destroyPlayer() {
-                        if (this.player) {
-                            this.player.pause();
-                            this.player.unload();
-                            this.player.destroy();
-                            this.player = null;
-                        }
-                    }
-                },
-                initPlayer() {
-                        if (mpegts && mpegts.isSupported()) {
-                            this.player = mpegts.createPlayer({
-                                type: 'flv',
-                                url: 'http://192.168.15.250:8080/live/livestream-a.flv',
-                                isLive: true,
-                                enableStashBuffer: false
-                            });
-                            this.player.attachMediaElement(document.getElementById('liveStream'));
-                            this.player.load();
-                        }
-                    },
-
-                    destroyPlayer() {
-                        if (this.player) {
-                            this.player.pause();
-                            this.player.unload();
-                            this.player.destroy();
-                            this.player = null;
-                        }
-                    },
-
-                },
-
-                getProductIdFromUrl() {
-                    const urlParams = new URLSearchParams(window.location.search);
-                    this.productId = urlParams.get('id') || 'recuT512gzx6yw'; // 默认值
-                },
-
-                async loadData() {
-                    this.loading = true;
-                    this.error = null;
-
-                    try {
-                        const response = await fetch(`/api/v1/farm/info?product_id=${this.productId}`);
-                        const result = await response.json();
-
-                        if (result.code === 0) {
-                            this.farmData = result.data;
-                        } else {
-                            this.error = result.message || '获取数据失败';
-                        }
-                    } catch (err) {
-                        this.error = '网络请求失败，请检查网络连接';
-                        console.error('API请求失败:', err);
-                    } finally {
-                        this.loading = false;
-                    }
-                },
-,
-
-                navigateToFeedingRecords() {
-                    this.showFeedingRecords = true;
-                },
-
-                navigateToMain() {
-                    this.showFeedingRecords = false;
-                },
-
-                getImageUrl(image) {
-                    if (typeof image === 'string') {
-                        return image;
-                    } else if (image && typeof image === 'object') {
-                        // 如果有file_token，使用代理接口
-                        if (image.file_token) {
-                            return `/api/v1/img/${image.file_token}`;
-                        }
-                        // 否则使用原始URL（如果有的话）
-                        return image.url || image.tmp_url || image.name || '';
-                    }
-                    return '';
-                },
-
-                getProductInfoItems() {
-                    if (!this.farmData.product_info || !this.farmData.product_info.商品信息) {
-                        return [];
-                    }
-
-                    return this.farmData.product_info.商品信息.map(item => {
-                        const keys = Object.keys(item).filter(key => key !== 'index');
-                        const label = keys[0] || '';
-                        const value = item[label] || '';
-                        return {
-                            index: item.index,
-                            label: label,
-                            value: value
-                        };
-                    });
-                },
-
-                showImageGallery(recordId) {
-                    // 图片画廊功能，暂时只是日志输出
-                    console.log('显示图片画廊:', recordId);
-                }
-            };
-        }
-
-        createApp({
-            FarmApp
-        }).mount();
-    </script>
+    PetiteVue.createApp().mount();
+  </script>
 </body>
 </html>
