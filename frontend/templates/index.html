@@ -112,9 +112,7 @@
         <div class="card">
             <h3 class="card-title">实时监控</h3>
             <div class="monitor-section">
-                <video controls>
-                    <source src="http://192.168.15.250:8080/live/livestream-a/hls.m3u8" type="application/vnd.apple.mpegurl" class="monitor-image">
-                </video>
+                <video controls autoplay></video>
                 <div class="address">
                     <i class="fas fa-map-marker-alt"></i>
                     <span v-text="farmData.product_info && farmData.product_info.鸡舍地址 ? farmData.product_info.鸡舍地址 : '加载中...'"></span>
@@ -214,7 +212,7 @@
 
         </div>
     </div>
-
+    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.6.2/dist/mpegts.js"></script>
     <script>
         const { createApp } = PetiteVue;
 
@@ -230,7 +228,7 @@
                     this.getProductIdFromUrl();
                     this.loadData();
                 },
-
+                
                 getProductIdFromUrl() {
                     const urlParams = new URLSearchParams(window.location.search);
                     this.productId = urlParams.get('id') || 'recuT512gzx6yw'; // 默认值
@@ -300,12 +298,15 @@
                     // 图片画廊功能，暂时只是日志输出
                     console.log('显示图片画廊:', recordId);
                 }
+
             };
         }
 
         createApp({
             FarmApp
         }).mount();
+
+
     </script>
 </body>
 </html>

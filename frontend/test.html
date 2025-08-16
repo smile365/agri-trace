@@ -3,108 +3,361 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>前端功能测试</title>
+    <title>掌上农场 - 土鸡养殖追溯系统</title>
+    <link rel="stylesheet" href="../static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://unpkg.com/petite-vue@0.4.1/dist/petite-vue.iife.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
-        .loading { color: #666; }
-        .error { color: #e74c3c; }
-        .success { color: #27ae60; }
-        pre { background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
-    </style>
 </head>
-<body v-scope="TestApp()" @vue:mounted="mounted">
-    <h1>前端功能测试</h1>
-    
-    <div class="test-section">
-        <h2>API连接测试</h2>
-        <div v-if="loading" class="loading">正在测试API连接...</div>
-        <div v-if="error" class="error">错误: {{ error }}</div>
-        <div v-if="!loading && !error" class="success">✓ API连接成功</div>
+<body v-scope="FarmApp()" @vue:mounted="mounted">
+    <!-- 加载状态 -->
+    <div v-if="loading" class="loading-container">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>正在加载农场数据...</p>
+        </div>
     </div>
-    
-    <div class="test-section" v-if="farmData">
-        <h2>农户信息</h2>
-        <p><strong>农户名称:</strong> {{ farmData.farmer_info?.farmer_name }}</p>
-        <p><strong>产品ID:</strong> {{ farmData.farmer_info?.product_id }}</p>
+
+    <!-- 错误状态 -->
+    <div v-if="error" class="error-container">
+        <div class="error-message">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>{{ error }}</p>
+            <button @click="loadData" class="retry-button">重试</button>
+        </div>
     </div>
-    
-    <div class="test-section" v-if="farmData">
-        <h2>商品信息</h2>
-        <div v-if="farmData.product_info">
-            <p><strong>标题:</strong> {{ farmData.product_info.标题 }}</p>
-            <p><strong>监控地址:</strong> {{ farmData.product_info.监控地址 }}</p>
-            <p><strong>第一次查询时间:</strong> {{ farmData.product_info.第一次查询时间 }}</p>
-            
-            <h3>商品详情</h3>
-            <div v-if="farmData.product_info.商品信息">
-                <div v-for="item in farmData.product_info.商品信息" :key="item.index">
-                    <strong>{{ getItemLabel(item) }}:</strong> {{ getItemValue(item) }}
+
+    <!-- 主页面 -->
+    <div v-if="!loading && !error" id="mainPage" class="page active">
+    <!-- 顶部栏 -->
+    <header class="header">
+        <h1 class="header-title">掌上农场</h1>
+        <p class="header-subtitle">全程溯源 · 安全放心</p>
+    </header>
+
+    <div class="container">
+        <!-- 用户信息区 -->
+        <div class="card">
+            <div class="chicken-info">
+                <img v-if="farmData.product_info && farmData.product_info.首图"
+                     :src="getImageUrl(farmData.product_info.首图)"
+                     alt="农家散养土鸡"
+                     class="chicken-image">
+                <img v-else
+                     src="https://cdn.sxy21.cn/static/imgs/1754275189429.png"
+                     alt="农家散养土鸡"
+                     class="chicken-image">
+                <h3 class="chicken-title" v-text="farmData.product_info && farmData.product_info.标题 ? farmData.product_info.标题 : '加载中...'"></h3>
+            </div>
+        </div>
+
+        <!-- 首次查询时间 -->
+        <div class="card">
+            <div class="query-time">
+                <h3 class="card-title">第一次查询时间</h3>
+                <div class="time-info">
+                    <i class="fas fa-check-circle check-icon"></i>
+                    <span class="time-text" v-text="farmData.product_info && farmData.product_info.第一次查询时间 ? farmData.product_info.第一次查询时间 : '加载中...'"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 运动步数 -->
+        <div class="card">
+            <h3 class="card-title">运动步数</h3>
+            <div class="steps-info">
+                <div class="total-steps">1,730,445 步</div>
+                <div class="steps-details">
+                    <div class="detail-item">
+                        <span class="label">活动记录天数：</span>
+                        <span class="value">71 天</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="label">日均步数：</span>
+                        <span class="value">23,211 步</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 养殖环境 -->
+        <div class="card">
+            <h3 class="card-title">温度和湿度</h3>
+            <div class="environment-info">
+                <div class="temp-humidity">
+                    <div class="env-item">
+                        <i class="fas fa-thermometer-half"></i>
+                        <span class="env-value">27.9 ℃</span>
+                    </div>
+                    <div class="env-item">
+                        <i class="fas fa-tint"></i>
+                        <span class="env-value">63.0 %RH</span>
+                    </div>
+                </div>
+                <div class="feeding-records">
+                    <h3 class="card-title">喂养操作记录</h3>
+                    <div class="record-grid">
+                        <div class="record-item clickable" @click="navigateToFeedingRecords()">
+                            <span class="record-label">饲喂次数：</span>
+                            <div>
+                                <span class="record-value" v-text="(farmData.statistics && farmData.statistics.feeding_count ? farmData.statistics.feeding_count : 0) + ' 次'"></span>
+                                <i class="fas fa-chevron-right arrow-icon"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 监控画面 -->
+        <div class="card">
+            <h3 class="card-title">实时监控</h3>
+            <div class="monitor-section">
+                <video id="liveStream" controls autoplay>
+                </video>
+                <div class="address">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span v-text="farmData.product_info && farmData.product_info.鸡舍地址 ? farmData.product_info.鸡舍地址 : '加载中...'"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 商品信息 -->
+        <div class="card">
+            <h3 class="card-title">商品信息</h3>
+            <div class="product-info">
+                <div v-for="item in getProductInfoItems()" :key="item.index" class="info-row">
+                    <span class="info-label" v-text="item.label + '：'"></span>
+                    <span class="info-value" v-text="item.value"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 养殖流程 -->
+        <div class="card">
+            <h3 class="card-title">养殖流程</h3>
+            <div class="timeline">
+                <div v-for="process in farmData.breeding_process ? farmData.breeding_process : []" :key="process.record_id" class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-stage">
+                            <img v-if="process.images && process.images.length > 0"
+                                 :src="getImageUrl(process.images[0])"
+                                 :alt="process.process_name"
+                                 class="stage-image">
+                            <img v-else
+                                 src="https://cdn.sxy21.cn/static/imgs/default-process.png"
+                                 :alt="process.process_name"
+                                 class="stage-image">
+                            <div v-if="process.images && process.images.length > 0" class="image-badge" v-text="process.images.length"></div>
+                        </div>
+                        <div class="timeline-info">
+                            <h4 v-text="process.process_name"></h4>
+                            <p v-text="process.operation_time_formatted || process.created_time_formatted || '时间未知'"></p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    
-    <div class="test-section" v-if="farmData">
-        <h2>统计信息</h2>
-        <p><strong>饲喂次数:</strong> {{ farmData.statistics?.feeding_count || 0 }}</p>
-        <p><strong>流程节点:</strong> {{ farmData.statistics?.process_count || 0 }}</p>
-    </div>
-    
-    <div class="test-section" v-if="farmData">
-        <h2>原始数据</h2>
-        <pre>{{ JSON.stringify(farmData, null, 2) }}</pre>
+
+    <!-- 底部栏 -->
+    <footer class="footer">
+        <div class="footer-features">
+            <div class="feature-item">
+                <i class="fas fa-qrcode"></i>
+                <span>一物一码</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-eye"></i>
+                <span>信息透明</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-shield-alt"></i>
+                <span>拒绝假货</span>
+            </div>
+        </div>
+        <div class="footer-copyright">
+            <p>数据由参与方提供，溯源系统提供技术支持</p>
+        </div>
+    </footer>
     </div>
 
-    <script>
+    <!-- 喂养操作记录页面 -->
+    <div v-if="showFeedingRecords" id="feedingRecordsPage" class="page">
+        <header class="page-header">
+            <button class="back-button" @click="navigateToMain()">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h1 class="page-title">喂养操作记录</h1>
+        </header>
+
+        <div class="feeding-records-container">
+            <div v-for="record in farmData.feeding_records ? farmData.feeding_records : []" :key="record.record_id" class="feeding-record-item">
+                <div class="record-header">
+                    <div class="food-info">
+                        <div class="food-name" v-text="record.food_name"></div>
+                        <div class="record-time" v-text="record.operation_time_formatted || record.created_time_formatted || '时间未知'"></div>
+                        <div class="operator-name" v-text="'操作人：' + (record.operator || '未知')"></div>
+                    </div>
+                    <div class="record-image">
+                        <img v-if="record.images && record.images.length > 0"
+                             :src="getImageUrl(record.images[0])"
+                             :alt="record.food_name + '喂养'"
+                             class="record-photo"
+                             @click="showImageGallery(record.record_id)">
+                        <div v-if="record.images && record.images.length > 0" class="photo-count" v-text="record.images.length"></div>
+                        <div v-else class="no-image">无图片</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.6.2/dist/mpegts.js"></script>
+<script>
         const { createApp } = PetiteVue;
 
-        function TestApp() {
+        function FarmApp() {
             return {
                 loading: true,
                 error: null,
-                farmData: null,
+                farmData: {},
+                showFeedingRecords: false,
+                productId: null,
 
                 mounted() {
+                    this.getProductIdFromUrl();
                     this.loadData();
+                    this.initPlayer();
+                },
+
+                destroyed() {
+                    this.destroyPlayer();
+                },
+
+                methods: {
+                    initPlayer() {
+                        if (mpegts && mpegts.isSupported()) {
+                            this.player = mpegts.createPlayer({
+                                type: 'flv',
+                                url: 'http://192.168.15.250:8080/live/livestream-a.flv',
+                                isLive: true,
+                                enableStashBuffer: false
+                            });
+                            this.player.attachMediaElement(document.getElementById('liveStreamVideo'));
+                            this.player.load();
+                        }
+                    },
+
+                    destroyPlayer() {
+                        if (this.player) {
+                            this.player.pause();
+                            this.player.unload();
+                            this.player.destroy();
+                            this.player = null;
+                        }
+                    }
+                },
+                initPlayer() {
+                        if (mpegts && mpegts.isSupported()) {
+                            this.player = mpegts.createPlayer({
+                                type: 'flv',
+                                url: 'http://192.168.15.250:8080/live/livestream-a.flv',
+                                isLive: true,
+                                enableStashBuffer: false
+                            });
+                            this.player.attachMediaElement(document.getElementById('liveStream'));
+                            this.player.load();
+                        }
+                    },
+
+                    destroyPlayer() {
+                        if (this.player) {
+                            this.player.pause();
+                            this.player.unload();
+                            this.player.destroy();
+                            this.player = null;
+                        }
+                    },
+
+                },
+
+                getProductIdFromUrl() {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    this.productId = urlParams.get('id') || 'recuT512gzx6yw'; // 默认值
                 },
 
                 async loadData() {
                     this.loading = true;
                     this.error = null;
-                    
+
                     try {
-                        const response = await fetch('/api/v1/farm/info?product_id=recuT512gzx6yw');
+                        const response = await fetch(`/api/v1/farm/info?product_id=${this.productId}`);
                         const result = await response.json();
-                        
+
                         if (result.code === 0) {
                             this.farmData = result.data;
                         } else {
                             this.error = result.message || '获取数据失败';
                         }
                     } catch (err) {
-                        this.error = '网络请求失败: ' + err.message;
+                        this.error = '网络请求失败，请检查网络连接';
+                        console.error('API请求失败:', err);
                     } finally {
                         this.loading = false;
                     }
                 },
+,
 
-                getItemLabel(item) {
-                    const keys = Object.keys(item).filter(key => key !== 'index');
-                    return keys[0] || '';
+                navigateToFeedingRecords() {
+                    this.showFeedingRecords = true;
                 },
 
-                getItemValue(item) {
-                    const keys = Object.keys(item).filter(key => key !== 'index');
-                    const label = keys[0] || '';
-                    return item[label] || '';
+                navigateToMain() {
+                    this.showFeedingRecords = false;
+                },
+
+                getImageUrl(image) {
+                    if (typeof image === 'string') {
+                        return image;
+                    } else if (image && typeof image === 'object') {
+                        // 如果有file_token，使用代理接口
+                        if (image.file_token) {
+                            return `/api/v1/img/${image.file_token}`;
+                        }
+                        // 否则使用原始URL（如果有的话）
+                        return image.url || image.tmp_url || image.name || '';
+                    }
+                    return '';
+                },
+
+                getProductInfoItems() {
+                    if (!this.farmData.product_info || !this.farmData.product_info.商品信息) {
+                        return [];
+                    }
+
+                    return this.farmData.product_info.商品信息.map(item => {
+                        const keys = Object.keys(item).filter(key => key !== 'index');
+                        const label = keys[0] || '';
+                        const value = item[label] || '';
+                        return {
+                            index: item.index,
+                            label: label,
+                            value: value
+                        };
+                    });
+                },
+
+                showImageGallery(recordId) {
+                    // 图片画廊功能，暂时只是日志输出
+                    console.log('显示图片画廊:', recordId);
                 }
             };
         }
 
         createApp({
-            TestApp
+            FarmApp
         }).mount();
     </script>
 </body>

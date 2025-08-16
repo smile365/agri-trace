@@ -1,72 +1,27 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>HLS Live 播放</title>
-  <!-- 使用官方 CDN 的 hls.js（可换成本地文件） -->
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <style>
-    html,body{margin:0;padding:0;background:#0b0d12;color:#eef1f5;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-    .wrap{max-width:960px;margin:4rem auto;padding:0 1rem}
-    h1{font-size:1.25rem;font-weight:600;margin:0 0 1rem}
-    .player{position:relative;background:#000;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);overflow:hidden}
-    video{width:100%;height:auto;display:block;background:#000}
-    .tip{opacity:.8;margin-top:.75rem;font-size:.9rem;line-height:1.6}
-    .err{margin-top:1rem;padding:.75rem 1rem;border-radius:10px;background:#2a0e0e;color:#ffd7d7;display:none;white-space:pre-wrap}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>flv test</title>
 </head>
 <body>
-  <div class="wrap">
-    <h1>HLS Live 播放（http://192.168.15.250:8080/live/livestream-a/hls.m3u8）</h1>
-
-    <div class="player">
-      <video id="video" controls playsinline webkit-playsinline preload="auto" muted></video>
-    </div>
-
-    <div class="tip">
-      若页面是 <b>HTTPS</b>，而流是 <b>HTTP</b>，浏览器会当成混合内容而拦截；请改用同为 HTTP 的页面，或把流改成 HTTPS。<br/>
-      多数浏览器需要用户交互才允许自动播放声音；已默认 <code>muted</code> 以提升起播成功率。
-    </div>
-
-    <div id="err" class="err"></div>
-  </div>
-
-  <script>
-    const src = "http://192.168.15.250:8080/live/livestream-a/hls.m3u8";
-    const video = document.getElementById('video');
-    const errBox = document.getElementById('err');
-
-    function showError(e){
-      errBox.style.display = 'block';
-      errBox.textContent = (e && e.message) ? e.message : (e ? String(e) : '未知错误');
-      console.error(e);
-    }
-
-    async function start(){
-      try{
-        if (video.canPlayType('application/vnd.apple.mpegurl')) {
-          // Safari / 一些支持原生 HLS 的环境
-          video.src = src;
-          await video.play().catch(()=>{ /* 用户未交互可能被阻止 */ });
-        } else if (window.Hls && Hls.isSupported()) {
-          const hls = new Hls({
-            // 可按需微调 live 体验
-            liveSyncDuration: 3, // 秒
-            liveMaxLatencyDuration: 10
-          });
-          hls.loadSource(src);
-          hls.attachMedia(video);
-          hls.on(Hls.Events.ERROR, function (event, data) {
-            if (data && data.fatal) showError(data);
-          });
-          await video.play().catch(()=>{ /* 用户未交互可能被阻止 */ });
-        } else {
-          showError('此浏览器不支持原生 HLS，且 hls.js 不可用。请更换浏览器或启用 hls.js。');
+    <video id="videoElement" autoplay controls></video>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/mpegts.js@1.6.2/dist/mpegts.js"></script>
+    <script>
+        var player = null;
+        if (mpegts.getFeatureList().mseLivePlayback) {
+            var videoElement = document.getElementById('videoElement');
+            player = mpegts.createPlayer({
+                type: 'flv', 
+                url: 'http://192.168.15.250:8080/live/livestream-a.flv',
+                isLive: true, 
+                enableStashBuffer: false, 
+                liveSync: true
+            });
+            player.attachMediaElement(videoElement);
+            player.load();
         }
-      } catch(e){ showError(e); }
-    }
-    start();
-  </script>
+    </script>
+
 </body>
-</html>
