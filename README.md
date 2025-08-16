@@ -34,7 +34,7 @@ python app.py
 
 4. 访问前端页面
 ```
-http://localhost:5000?product_id=xxx
+http://127.0.0.1:5000/index.html?id=recuT512gzx6yw
 ```
 
 ## 开发说明

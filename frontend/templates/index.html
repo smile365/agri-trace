@@ -112,7 +112,9 @@
         <div class="card">
             <h3 class="card-title">实时监控</h3>
             <div class="monitor-section">
-                <img src="https://cdn.sxy21.cn/static/imgs/1754275237340.png" alt="实时监控画面" class="monitor-image">
+                <video controls>
+                    <source src="http://192.168.15.250:8080/live/livestream-a/hls.m3u8" type="application/vnd.apple.mpegurl" class="monitor-image">
+                </video>
                 <div class="address">
                     <i class="fas fa-map-marker-alt"></i>
                     <span v-text="farmData.product_info && farmData.product_info.鸡舍地址 ? farmData.product_info.鸡舍地址 : '加载中...'"></span>
