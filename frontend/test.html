@@ -66,33 +66,14 @@
          @mouseleave="hovered = false">
 
       <video ref="video"
-             playsinline
-             preload="auto"
+             autoplay 
+             controls
              @play="playing = true"
              @pause="playing = false"
              @ended="playing = false">
       </video>
 
-      <!-- 直播标记 -->
-      <div class="badge">LIVE • FLV</div>
 
-      <!-- 悬浮控制层（未播放时常显；播放中仅悬浮时显） -->
-      <div class="overlay" :class="{ show: !playing }">
-        <button class="btn" @click="togglePlay" :title="playing ? '暂停' : '播放'">
-          <!-- 播放图标 ▶ -->
-          <template v-if="!playing">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M8 5v14l11-7z"></path>
-            </svg>
-          </template>
-          <!-- 暂停图标 ⏸ -->
-          <template v-else>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6 5h4v14H6zm8 0h4v14h-4z"></path>
-            </svg>
-          </template>
-        </button>
-      </div>
 
       <!-- 错误提示 -->
       <div class="err" v-if="error">
@@ -111,20 +92,18 @@
         playing: false,
         hovered: false,
         error: '',
-        async ensurePlayerLoaded() {
+        ensurePlayerLoaded() {
+            console.log("ensurePlayerLoaded");
           if (this.player || !window.mpegts || !mpegts.isSupported()) return;
 
           try {
             this.player = mpegts.createPlayer({
               type: 'flv',
-              isLive: true,
               url: FLV_URL,
               // 直播常见设置：减小缓冲，尽量低延迟
-              enableStashBuffer: false,
-              stashInitialSize: 128
-            }, {
-              // 可按需微调
-              liveBufferLatencyChasing: true,
+              isLive: true, 
+              enableStashBuffer: false, 
+              liveSync: true
             });
 
             this.player.attachMediaElement(this.$refs.video);
@@ -139,6 +118,7 @@
           }
         },
         async togglePlay() {
+            console.log("togglePlay");
           try {
             await this.ensurePlayerLoaded();
             if (!this.player) {
@@ -156,16 +136,18 @@
           }
         },
         mounted() {
+          console.log("mounted",document.getElementsByTagName('video'));
           // 预加载流但不自动播放，可减少首次点击延迟
           this.ensurePlayerLoaded();
           // 页面隐藏时自动暂停，返回时不自动播放
           document.addEventListener('visibilitychange', () => {
-            if (document.hidden && this.playing) this.$refs.video.pause();
+            if (document.hidden && this.playing) this.$refs.video.play();
           });
           // 页面卸载时清理
           window.addEventListener('beforeunload', () => this.cleanup());
         },
         cleanup() {
+            console.log("cleanup");
           try {
             this.player?.destroy();
           } catch (_) {}
@@ -176,6 +158,8 @@
     }
 
     PetiteVue.createApp().mount();
+    
+    
   </script>
 </body>
 </html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>petite-vue mounted 示例</title>
+  <script type="module">
+    import { createApp } from 'https://unpkg.com/petite-vue@0.4.1/dist/petite-vue.es.js?module'
+    
+    createApp({
+      // 数据
+      count: 0,
+      message: '等待初始化...',
+      buttonText: '点击增加计数',
+      
+      // 方法
+      increment() {
+        this.count++
+      },
+      
+      // 生命周期钩子
+      mounted() {
+        console.log('组件已挂载！')
+        
+        // 访问 DOM 元素
+        const title = this.$el.querySelector('h1')
+        title.style.color = '#4285f4'
+        
+        // 修改数据
+        this.message = '组件已加载完成'
+        
+        // 设置定时器
+        setTimeout(() => {
+          this.message = '3秒后自动增加了一次计数'
+          this.count++
+        }, 3000)
+      },
+      
+      // 另一个生命周期钩子
+      unmounted() {
+        console.log('组件已卸载')
+      }
+    }).mount('#app')
+  </script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1 {
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    button {
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #3367d6;
+    }
+    .counter {
+      font-size: 1.5em;
+      margin: 20px 0;
+    }
+    .message {
+      padding: 10px;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>petite-vue mounted 示例</h1>
+    
+    <div class="counter">
+      当前计数: {{ count }}
+    </div>
+    
+    <button @click="increment">{{ buttonText }}</button>
+    
+    <div class="message">
+      {{ message }}
+    </div>
+    
+    <p><small>打开浏览器控制台可以看到生命周期日志</small></p>
+  </div>
+</body>
+</html>
