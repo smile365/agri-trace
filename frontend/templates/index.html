@@ -9,79 +9,33 @@
     <!-- petite-vue 已移除 -->
     <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.js"></script>
     <style>
-        /* FLV播放器样式 */
-        .player {
-            width: 100%;
-            aspect-ratio: 16 / 9;
-            position: relative;
-            border-radius: 8px;
-            overflow: hidden;
-            background: #111;
-            margin-bottom: 10px;
-        }
-        .player video {
-            width: 100%; 
-            height: 100%; 
-            object-fit: contain; 
-            background: #000;
-        }
-        /* 悬浮时显示控制层；未播放时常显 */
-        .overlay {
-            position: absolute; 
-            inset: 0;
-            display: grid; 
-            place-items: center;
-            pointer-events: none; /* 默认不拦截事件，按钮本身开启事件 */
-            transition: opacity .18s ease;
-            opacity: 0;
-        }
-        .player:hover .overlay { opacity: 1; }
-        .overlay.show { opacity: 1; } /* 初始未播放时可见 */
-        .btn {
-            pointer-events: auto;
-            width: 64px; 
-            height: 64px;
-            border-radius: 999px;
-            background: rgba(0,0,0,.45);
-            backdrop-filter: blur(2px);
-            border: 1px solid rgba(255,255,255,.15);
-            display: grid; 
-            place-items: center;
+        .play-pause-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             cursor: pointer;
-            transition: transform .12s ease, background .2s ease;
+            z-index: 10;
+            transition: opacity 0.3s ease;
         }
-        .btn:hover { 
-            transform: scale(1.06); 
-            background: rgba(0,0,0,.55); 
+        
+        .play-pause-button i {
+            font-size: 24px;
         }
-        .btn svg { 
-            width: 30px; 
-            height: 30px; 
-            fill: #fff; 
-        }
-        .badge {
-            position: absolute; 
-            top: 10px; 
-            left: 10px;
-            background: rgba(0,0,0,.55); 
-            color: #fff; 
-            font-size: 12px;
-            padding: 4px 8px; 
-            border-radius: 999px; 
-            letter-spacing: .5px;
-            user-select: none;
-        }
-        .err {
-            position: absolute; 
-            inset: auto 12px 12px 12px;
-            background: rgba(0,0,0,.6); 
-            color: #fff; 
-            padding: 10px 12px;
-            border-radius: 10px; 
-            font-size: 13px; 
-            line-height: 1.4;
+        
+        .player {
+            position: relative;
         }
     </style>
+    
 </head>
 <body>
     <!-- 加载状态 -->
@@ -181,12 +135,12 @@
             <h3 class="card-title">实时监控</h3>
             <div class="monitor-section" >
                 <div class="player" id="videoPlayer">
-                    <video id="videoElement" autoplay controls>
+                    <video id="videoElement" autoplay class="monitor-image">
                     </video>
-                    
-            
-                    
-    
+                    <div id="playPauseButton" class="play-pause-button" style="display: none;">
+                        <i class="fas fa-play" id="playIcon" ></i>
+                        <i class="fas fa-pause" id="pauseIcon" style="display: none;"></i>
+                    </div>
                 </div>
                 <div class="address">
                     <i class="fas fa-map-marker-alt"></i>
@@ -279,6 +233,53 @@
                 });
                 player.attachMediaElement(videoElement);
                 player.load();
+                // 获取播放/暂停按钮元素
+                const playPauseButton = document.getElementById('playPauseButton');
+                const playIcon = document.getElementById('playIcon');
+                const pauseIcon = document.getElementById('pauseIcon');
+                let isPlaying = false;
+                
+                // 鼠标悬停显示播放/暂停按钮
+                const videoPlayer = document.getElementById('videoPlayer');
+                videoPlayer.addEventListener('mouseenter', () => {
+                    playPauseButton.style.display = 'flex';
+                });
+                
+                videoPlayer.addEventListener('mouseleave', () => {
+                    playPauseButton.style.display = 'none';
+                });
+                
+                // 获取焦点时显示播放/暂停按钮
+                videoElement.addEventListener('focus', () => {
+                    playPauseButton.style.display = 'flex';
+                });
+                
+                videoElement.addEventListener('blur', () => {
+                    playPauseButton.style.display = 'none';
+                });
+                
+                
+                // 点击按钮播放/暂停
+                playPauseButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    togglePlayPause();
+                });
+                
+                // 播放/暂停切换函数
+                function togglePlayPause() {
+                    if (player) {
+                        if (isPlaying) {
+                            player.pause();
+                            playIcon.style.display = 'block';
+                            pauseIcon.style.display = 'none';
+                        } else {
+                            player.play();
+                            playIcon.style.display = 'none';
+                            pauseIcon.style.display = 'block';
+                        }
+                        isPlaying = !isPlaying;
+                    }
+                }
             }
         }
         

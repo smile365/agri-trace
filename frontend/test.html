@@ -158,7 +158,19 @@
     }
 
     PetiteVue.createApp().mount();
-    
+    var player = null;
+        if (mpegts.getFeatureList().mseLivePlayback) {
+            var videoElement = document.getElementsByTagName('video')[0];
+            player = mpegts.createPlayer({
+                type: 'flv', 
+                url: 'http://192.168.15.250:8080/live/livestream-a.flv',
+                isLive: true, 
+                enableStashBuffer: false, 
+                liveSync: true
+            });
+            player.attachMediaElement(videoElement);
+            player.load();
+        }
     
   </script>
 </body>
