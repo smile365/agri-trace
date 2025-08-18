@@ -16,6 +16,10 @@ class Config:
     MASTER_PERSONAL_BASE_TOKEN = os.environ.get('MASTER_PERSONAL_BASE_TOKEN')
     MASTER_TABLE_ID = os.environ.get('MASTER_TABLE_ID')
     
+    # 新增飞书多维表格配置
+    PERSONAL_BASE_TOKEN = os.environ.get('PERSONAL_BASE_TOKEN')
+    APP_TOKEN = os.environ.get('APP_TOKEN')
+    
     # Flask应用配置
     FLASK_ENV = os.environ.get('FLASK_ENV', 'development')
     FLASK_DEBUG = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
@@ -41,7 +45,9 @@ class Config:
         required_configs = [
             'MASTER_APP_TOKEN',
             'MASTER_PERSONAL_BASE_TOKEN', 
-            'MASTER_TABLE_ID'
+            'MASTER_TABLE_ID',
+            'PERSONAL_BASE_TOKEN',
+            'APP_TOKEN'
         ]
         
         missing_configs = []

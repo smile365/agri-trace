@@ -18,9 +18,19 @@ class FeishuService:
         self.app_token = config.MASTER_APP_TOKEN
         self.personal_token = config.MASTER_PERSONAL_BASE_TOKEN
         self.table_id = config.MASTER_TABLE_ID
-
+        
+        # 新增飞书多维表格配置
+        self.personal_base_token = config.PERSONAL_BASE_TOKEN
+        self.app_token_new = config.APP_TOKEN
+        
+        # 数据表缓存
+        self.tables_cache = {}
+        
         # 自定义数据表处理器注册表
         self._custom_processors = {}
+        
+        # 初始化时获取数据表列表并缓存
+        self._init_tables_cache()
         
     def _get_headers(self) -> Dict[str, str]:
         """获取请求头"""
@@ -28,6 +38,145 @@ class FeishuService:
             'Authorization': f'Bearer {self.personal_token}',
             'Content-Type': 'application/json'
         }
+        
+    def _get_headers_new(self) -> Dict[str, str]:
+        """获取新的请求头（使用PERSONAL_BASE_TOKEN）"""
+        return {
+            'Authorization': f'Bearer {self.personal_base_token}',
+            'Content-Type': 'application/json'
+        }
+        
+    def _init_tables_cache(self):
+        """初始化数据表缓存"""
+        try:
+            # 从飞书接口获取数据表列表
+            url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token_new}/tables"
+            response = requests.get(url, headers=self._get_headers_new())
+            response.raise_for_status()
+            
+            data = response.json()
+            if data.get('code') == 0:
+                tables = data.get('data', {}).get('items', [])
+                
+                # 缓存数据表信息
+                for table in tables:
+                    table_name = table.get('name')
+                    table_id = table.get('table_id')
+                    if table_name and table_id:
+                        self.tables_cache[table_name] = table_id
+                        
+                print(f"成功缓存 {len(self.tables_cache)} 个数据表信息")
+            else:
+                print(f"获取数据表列表失败: {data.get('msg', '未知错误')}")
+        except Exception as e:
+            print(f"初始化数据表缓存异常: {str(e)}")
+            
+    def get_table_id_by_name(self, table_name: str) -> str:
+        """根据表名获取表ID"""
+        return self.tables_cache.get(table_name, '')
+        
+    def get_table_records_new(self, table_name: str) -> Dict:
+        """获取指定表名的记录
+        
+        Args:
+            table_name: 表名
+            
+        Returns:
+            包含记录数据的字典
+        """
+        # 从缓存中获取表ID
+        table_id = self.get_table_id_by_name(table_name)
+        if not table_id:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'未找到表名为 {table_name} 的数据表'
+            }
+            
+        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token_new}/tables/{table_id}/records"
+        
+        try:
+            response = requests.get(url, headers=self._get_headers_new())
+            response.raise_for_status()
+            
+            data = response.json()
+            if data.get('code') == 0:
+                return {
+                    'success': True,
+                    'data': data.get('data', {}),
+                    'message': 'success'
+                }
+            else:
+                return {
+                    'success': False,
+                    'data': None,
+                    'message': data.get('msg', '未知错误')
+                }
+                
+        except requests.exceptions.RequestException as e:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'请求失败: {str(e)}'
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'处理失败: {str(e)}'
+            }
+            
+    def get_record_by_id_new(self, table_name: str, record_id: str) -> Dict:
+        """根据记录ID查询记录详情（使用新的飞书多维表格接口）
+        
+        Args:
+            table_name: 表名
+            record_id: 记录ID
+            
+        Returns:
+            包含记录详情的字典
+        """
+        # 从缓存中获取表ID
+        table_id = self.get_table_id_by_name(table_name)
+        if not table_id:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'未找到表名为 {table_name} 的数据表'
+            }
+            
+        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token_new}/tables/{table_id}/records/{record_id}"
+        
+        try:
+            response = requests.get(url, headers=self._get_headers_new())
+            response.raise_for_status()
+            
+            data = response.json()
+            if data.get('code') == 0 and data.get('data'):
+                return {
+                    'success': True,
+                    'data': data['data'].get('record', {}),
+                    'message': 'success'
+                }
+            else:
+                return {
+                    'success': False,
+                    'data': None,
+                    'message': data.get('msg', '未知错误')
+                }
+                
+        except requests.exceptions.RequestException as e:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'请求失败: {str(e)}'
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'处理失败: {str(e)}'
+            }
     
     def get_table_records(self, table_id: Optional[str] = None, page_size: int = 20) -> Dict:
         """
@@ -657,65 +806,85 @@ class FeishuService:
         Returns:
             包含农户完整信息的字典
         """
-        # 首先获取农户信息和数据表列表
-        tables_result = self.get_farmer_tables(product_id)
-
-        if not tables_result['success']:
-            return tables_result
-
-        farmer_info = tables_result['data']['farmer_info']
-        tables = tables_result['data']['tables']
-
-        app_token = farmer_info['app_token']
-        auth_code = farmer_info['auth_code']
-
-        # 初始化结果数据
-        complete_info = {
-            'farmer_info': farmer_info,
-            'product_info': {},
-            'feeding_records': [],
-            'breeding_process': [],
-            'other_tables': {}
-        }
-
-        # 获取各个数据表的数据
-        for table in tables:
-            table_name = table['table_name']
-            table_id = table['table_id']
-
-            # 获取数据表记录
-            records_result = self.get_farmer_table_records(app_token, auth_code, table_id)
-
-            if records_result['success']:
-                records = records_result['data'].get('items', [])
-
-                # 获取对应的处理器
-                processor = self._get_table_processor(table_name)
-
-                if processor and self._is_known_table(table_name):
-                    # 使用专用处理器处理已知类型的数据表
-                    processed_data = processor(records)
-
-                    # 根据表名存储处理后的数据
-                    if table_name in ['商品', 'product']:
-                        complete_info['product_info'] = processed_data
-                    elif table_name in ['饲喂记录', 'feeding']:
-                        complete_info['feeding_records'] = processed_data
-                    elif table_name in ['养殖流程', 'breeding']:
-                        complete_info['breeding_process'] = processed_data
-                else:
-                    # 处理未知类型的数据表
-                    processed_data = self._process_unknown_table(table_name, records)
-                    complete_info['other_tables'][table_name] = processed_data
-
-        # 计算统计信息
-        complete_info['statistics'] = self._calculate_statistics(complete_info)
-
-        return {
-            'success': True,
-            'data': complete_info,
-            'message': 'success'
-        }
+        try:
+            # 初始化结果数据
+            complete_info = {
+                'product_info': {},
+                'feeding_records': [],
+                'breeding_process': []
+            }
+            
+            # 使用「根据记录ID查询记录详情」接口获取农户信息
+            farmer_result = self.get_record_by_id_new('农户管理', product_id)
+            print(json.dumps(farmer_result))
+            if farmer_result['success']:
+                # 更新产品信息
+                complete_info['product_info'] = farmer_result['data'].get('fields', {})
+            
+            # 从「饲喂记录」表获取饲喂记录
+            feeding_result = self.get_table_records_new('饲喂记录')
+            if feeding_result['success']:
+                feeding_records = feeding_result['data'].get('items', [])
+                
+                # 处理饲喂记录
+                for record in feeding_records:
+                    fields = record.get('fields', {})
+                    farmer_link = fields.get('农户', [])
+                    
+                    # 检查是否与当前农户关联
+                    if farmer_link and isinstance(farmer_link, list) and len(farmer_link) > 0:
+                        record_ids = farmer_link[0].get('record_ids', [])
+                        if product_id in record_ids:
+                            feeding_record = {
+                                'record_id': record.get('record_id'),
+                                'food_name': fields.get('食物', ''),
+                                'operator': fields.get('操作人', ''),
+                                'operation_time': fields.get('操作时间'),
+                                'created_time': fields.get('创建'),
+                                'updated_time': fields.get('更新')
+                            }
+                            complete_info['feeding_records'].append(feeding_record)
+            
+            # 从「养殖流程」表获取养殖流程
+            breeding_result = self.get_table_records_new('养殖流程')
+            if breeding_result['success']:
+                breeding_records = breeding_result['data'].get('items', [])
+                
+                # 处理养殖流程
+                for record in breeding_records:
+                    fields = record.get('fields', {})
+                    farmer_link = fields.get('农户', [])
+                    
+                    # 检查是否与当前农户关联
+                    if farmer_link and isinstance(farmer_link, list) and len(farmer_link) > 0:
+                        record_ids = farmer_link[0].get('record_ids', [])
+                        if product_id in record_ids:
+                            process_record = {
+                                'record_id': record.get('record_id'),
+                                'process_name': fields.get('流程', ''),
+                                'operation_time': fields.get('操作时间'),
+                                'created_time': fields.get('创建'),
+                                'updated_time': fields.get('更新'),
+                                'images': fields.get('图片', []) if isinstance(fields.get('图片'), list) else [],
+                                'operator': fields.get('操作人', '')
+                            }
+                            complete_info['breeding_process'].append(process_record)
+            
+            # 计算统计信息
+            complete_info['statistics'] = self._calculate_statistics(complete_info)
+            
+            return {
+                'success': True,
+                'data': complete_info,
+                'message': 'success'
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'获取农户完整信息失败: {str(e)}'
+            }
 
     def get_table_fields(self, farmer_app_token: str, farmer_auth_code: str, table_id: str) -> Dict:
         """

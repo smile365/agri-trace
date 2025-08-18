@@ -295,9 +295,9 @@ def get_farm_info():
 
         if result['success']:
             data = result['data']
-            farmer_info = data['farmer_info']
+            
 
-            logger.info(f"成功获取农户 {farmer_info['farmer_name']} 的完整信息")
+            #logger.info(f"成功获取农户 {farmer_info['farmer_name']} 的完整信息")
 
             # 格式化时间戳
             def format_timestamp(timestamp):
@@ -326,21 +326,50 @@ def get_farm_info():
                 formatted_record['created_time_formatted'] = format_timestamp(record.get('created_time'))
                 breeding_process.append(formatted_record)
 
+            # 处理产品信息中的封面图和监控地址格式
+            product_info = data.get('product_info', {}).copy()
+            
+            # 修改封面图格式
+            if '封面图' in product_info and product_info['封面图']:
+                if isinstance(product_info['封面图'], list) and len(product_info['封面图']) > 0:
+                    file_token = product_info['封面图'][0].get('file_token', '')
+                    if file_token:
+                        product_info['封面图'] = f"http://127.0.0.1:5000/api/v1/img/{file_token}"
+                    else:
+                        product_info['封面图'] = ""
+                else:
+                    product_info['封面图'] = ""
+            
+            # 修改监控地址格式
+            if '监控地址' in product_info and product_info['监控地址'] and isinstance(product_info['监控地址'], list) and len(product_info['监控地址']) > 0:
+                    # 将 rtmp 协议改为 http，链接末尾增加 .flv
+                    rtmp_url = product_info['监控地址'][0]['text']
+                    # 提取 rtmp 地址中的流标识符
+                    parts = rtmp_url.split('/')
+                    if len(parts) > 3:
+                        stream_id = parts[-1]
+                        product_info['监控地址'] = f"http://srs.pxact.com/live/{stream_id}.flv"
+                    else:
+                        # 如果无法解析，使用默认地址
+                        product_info['监控地址'] = "http://srs.pxact.com/live/recuu78lxajroy.flv"
+            
+            # 简化统计信息
+            statistics = {}
+            if data.get('statistics'):
+                statistics = {
+                    'feeding_count': data['statistics'].get('feeding_count', 0),
+                    'process_count': data['statistics'].get('process_count', 0)
+                }
+            
             # 格式化响应数据
             response_data = {
                 'code': 0,
                 'message': 'success',
                 'data': {
-                    'farmer_info': {
-                        'product_id': farmer_info['product_id'],
-                        'farmer_name': farmer_info['farmer_name'],
-                        'app_token': farmer_info['app_token']
-                        # 注意：出于安全考虑，不在响应中返回完整的授权码
-                    },
-                    'product_info': data.get('product_info', {}),
+                    'product_info': product_info,
                     'feeding_records': feeding_records,
                     'breeding_process': breeding_process,
-                    'statistics': data.get('statistics', {})
+                    'statistics': statistics
                 }
             }
 
