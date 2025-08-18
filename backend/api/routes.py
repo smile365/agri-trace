@@ -625,22 +625,45 @@ def baidu_verify():
     return 'e22c1b37c4260ac0fe1a2fae229f5eb1e99379d7286192e351d0e9aad29a5298'
 
 import json
+
+# 全局变量用于缓存上次的温湿度数据
+last_humidity_temperature = None
+
 @api_v1.route('/dht/weather', methods=['POST'])
 def show_weather_info():
     """
     接受DHT11传感器数据并解码处理
 
     接收包含base64编码温湿度数据的JSON，解码后返回结构化的温湿度信息
+    如果数据与上次相同则忽略，否则更新飞书表格中的传感器数据
 
     Returns:
         JSON响应包含解码后的DHT11传感器数据
     """
+    global last_humidity_temperature
+    
     try:
         data = request.get_json()
-        #print(json.dumps(data))
         humidity_temperature = decode_dht11_message(data)
         data['message'] = humidity_temperature
-        logger.info(f"解码后的DHT11数据: {data}")
+        logger.debug(f"解码后的DHT11数据: {json.dumps(data)}")
+        
+        # 检查数据是否与上次相同
+        if last_humidity_temperature != humidity_temperature:
+            # 数据有变化，更新飞书表格
+            try:
+                update_result = update_sensor_data_to_feishu(humidity_temperature)
+                if update_result['success']:
+                    logger.info(f"成功更新飞书传感器数据: {humidity_temperature}")
+                    # 更新缓存
+                    last_humidity_temperature = humidity_temperature
+                else:
+                    logger.error(f"更新飞书传感器数据失败: {update_result['message']}")
+            except Exception as feishu_error:
+                logger.error(f"更新飞书数据时发生异常: {str(feishu_error)}")
+        else:
+            logger.debug("温湿度数据与上次相同，跳过更新")
+        
         return jsonify({
             'code': 200,
             'message': data['message'],
@@ -653,5 +676,82 @@ def show_weather_info():
             'message': f'数据解码失败: {str(e)}',
             'data': None
         }), 400
+
+def update_sensor_data_to_feishu(humidity_temperature):
+    """
+    更新传感器数据到飞书表格
+    
+    Args:
+        humidity_temperature: 包含温度和湿度的字典
+        
+    Returns:
+        更新结果字典
+    """
+    try:
+        # 1. 从数据表缓存中获取「传感器」表的所有记录
+        records_result = feishu_service.get_table_records_new('传感器')
+        if not records_result['success']:
+            return {
+                'success': False,
+                'message': f"获取传感器表记录失败: {records_result['message']}"
+            }
+        
+        records = records_result['data'].get('items', [])
+        
+        # 2. 找到名称为"温度"和"湿度"的记录ID
+        temperature_record_id = None
+        humidity_record_id = None
+        print(records)
+        for record in records:
+            fields = record.get('fields', {})
+            name = fields.get('名称', '')
+            if name == '温度':
+                temperature_record_id = record.get('record_id')
+            elif name == '湿度':
+                humidity_record_id = record.get('record_id')
+        
+        if not temperature_record_id or not humidity_record_id:
+            return {
+                'success': False,
+                'message': f"未找到温度或湿度记录，温度ID: {temperature_record_id}, 湿度ID: {humidity_record_id}"
+            }
+        
+        # 3. 准备批量更新的记录数据
+        update_records = []
+        
+        # 更新温度记录
+        if 'temperature' in humidity_temperature:
+            update_records.append({
+                'record_id': temperature_record_id,
+                'fields': {
+                    '文本': humidity_temperature['temperature']
+                }
+            })
+        
+        # 更新湿度记录
+        if 'humidity' in humidity_temperature:
+            update_records.append({
+                'record_id': humidity_record_id,
+                'fields': {
+                    '文本': humidity_temperature['humidity']
+                }
+            })
+        
+        if not update_records:
+            return {
+                'success': False,
+                'message': '没有有效的温湿度数据需要更新'
+            }
+        
+        # 4. 调用批量更新接口
+        update_result = feishu_service.batch_update_records('传感器', update_records)
+        
+        return update_result
+        
+    except Exception as e:
+        return {
+            'success': False,
+            'message': f'更新传感器数据异常: {str(e)}'
+        }
 
 

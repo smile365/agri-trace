@@ -1015,5 +1015,61 @@ class FeishuService:
             'message': 'success'
         }
 
+    def batch_update_records(self, table_name: str, records: List[Dict]) -> Dict:
+        """批量更新多条记录
+        
+        Args:
+            table_name: 表名
+            records: 要更新的记录列表，每个记录包含 record_id 和 fields
+            
+        Returns:
+            包含更新结果的字典
+        """
+        # 从缓存中获取表ID
+        table_id = self.get_table_id_by_name(table_name)
+        if not table_id:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'未找到表名为 {table_name} 的数据表'
+            }
+            
+        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token_new}/tables/{table_id}/records/batch_update"
+        
+        payload = {
+            "records": records
+        }
+        
+        try:
+            response = requests.post(url, headers=self._get_headers_new(), json=payload)
+            response.raise_for_status()
+            
+            data = response.json()
+            if data.get('code') == 0:
+                return {
+                    'success': True,
+                    'data': data.get('data', {}),
+                    'message': 'success'
+                }
+            else:
+                return {
+                    'success': False,
+                    'data': None,
+                    'message': data.get('msg', '未知错误')
+                }
+                
+        except requests.exceptions.RequestException as e:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'请求失败: {str(e)}'
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'处理失败: {str(e)}'
+            }
+
 # 创建服务实例
 feishu_service = FeishuService()
