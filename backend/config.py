@@ -12,9 +12,6 @@ class Config:
     
     # 飞书API配置
     FEISHU_API_BASE_URL = os.environ.get('FEISHU_API_BASE_URL', 'https://base-api.feishu.cn')
-    MASTER_APP_TOKEN = os.environ.get('MASTER_APP_TOKEN')
-    MASTER_PERSONAL_BASE_TOKEN = os.environ.get('MASTER_PERSONAL_BASE_TOKEN')
-    MASTER_TABLE_ID = os.environ.get('MASTER_TABLE_ID')
     
     # 新增飞书多维表格配置
     PERSONAL_BASE_TOKEN = os.environ.get('PERSONAL_BASE_TOKEN')
@@ -43,9 +40,6 @@ class Config:
     def validate(cls):
         """验证必要的配置项是否存在"""
         required_configs = [
-            'MASTER_APP_TOKEN',
-            'MASTER_PERSONAL_BASE_TOKEN', 
-            'MASTER_TABLE_ID',
             'PERSONAL_BASE_TOKEN',
             'APP_TOKEN'
         ]

@@ -15,9 +15,8 @@ class FeishuService:
 
     def __init__(self):
         self.base_url = config.FEISHU_API_BASE_URL
-        self.app_token = config.MASTER_APP_TOKEN
-        self.personal_token = config.MASTER_PERSONAL_BASE_TOKEN
-        self.table_id = config.MASTER_TABLE_ID
+        self.app_token = config.APP_TOKEN
+        self.personal_token = config.PERSONAL_BASE_TOKEN
         
         # 新增飞书多维表格配置
         self.personal_base_token = config.PERSONAL_BASE_TOKEN

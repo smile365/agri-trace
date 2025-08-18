@@ -624,7 +624,7 @@ def proxy_image(file_token):
 def baidu_verify():
     return 'e22c1b37c4260ac0fe1a2fae229f5eb1e99379d7286192e351d0e9aad29a5298'
 
-
+import json
 @api_v1.route('/dht/weather', methods=['POST'])
 def show_weather_info():
     """
@@ -637,6 +637,7 @@ def show_weather_info():
     """
     try:
         data = request.get_json()
+        #print(json.dumps(data))
         humidity_temperature = decode_dht11_message(data)
         data['message'] = humidity_temperature
         logger.info(f"解码后的DHT11数据: {data}")
