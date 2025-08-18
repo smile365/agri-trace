@@ -108,11 +108,11 @@
                 <div class="temp-humidity">
                     <div class="env-item">
                         <i class="fas fa-thermometer-half"></i>
-                        <span class="env-value">27.9 ℃</span>
+                        <span id="temperatureValue" class="env-value">-- ℃</span>
                     </div>
                     <div class="env-item">
                         <i class="fas fa-tint"></i>
-                        <span class="env-value">63.0 %RH</span>
+                        <span id="humidityValue" class="env-value">-- %RH</span>
                     </div>
                 </div>
                 <div class="feeding-records">
@@ -334,6 +334,9 @@
             // 更新查询时间
             updateQueryTime();
             
+            // 更新温湿度数据
+            updateTemperatureHumidity();
+            
             // 更新喂养次数
             updateFeedingCount();
             
@@ -411,6 +414,34 @@
                 addressElement.textContent = farmData.product_info.地址;
             } else {
                 addressElement.textContent = '暂无地址信息';
+            }
+        }
+        
+        // 更新温湿度数据
+        function updateTemperatureHumidity() {
+            const temperatureElement = document.getElementById('temperatureValue');
+            const humidityElement = document.getElementById('humidityValue');
+            
+            if (farmData.sensor) {
+                // 从传感器数据中获取温度和湿度
+                const temperature = farmData.sensor['温度'] || farmData.sensor['temperature'];
+                const humidity = farmData.sensor['湿度'] || farmData.sensor['humidity'];
+                
+                if (temperature !== undefined && temperature !== null) {
+                    temperatureElement.textContent = temperature + ' ℃';
+                } else {
+                    temperatureElement.textContent = '-- ℃';
+                }
+                
+                if (humidity !== undefined && humidity !== null) {
+                    humidityElement.textContent = humidity + ' %RH';
+                } else {
+                    humidityElement.textContent = '-- %RH';
+                }
+            } else {
+                // 如果没有传感器数据，显示默认值
+                temperatureElement.textContent = '-- ℃';
+                humidityElement.textContent = '-- %RH';
             }
         }
         
