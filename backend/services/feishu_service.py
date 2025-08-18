@@ -118,6 +118,52 @@ class FeishuService:
                 'data': None,
                 'message': f'请求失败: {str(e)}'
             }
+    
+    def get_table_records_filter(self, table_name: str, filter: str) -> Dict:
+        """获取指定表名的记录（带过滤条件）
+        
+        Args:
+            table_name: 表名
+            filter: 过滤条件，例如 'CurrentValue.[农户]="张三"'
+            
+        Returns:
+            包含记录数据的字典
+        """
+        # 从缓存中获取表ID
+        table_id = self.get_table_id_by_name(table_name)
+        if not table_id:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'未找到表名为 {table_name} 的数据表'
+            }
+            
+        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token_new}/tables/{table_id}/records?filter={filter}"
+        
+        try:
+            response = requests.get(url, headers=self._get_headers_new())
+            response.raise_for_status()
+            
+            data = response.json()
+            if data.get('code') == 0:
+                return {
+                    'success': True,
+                    'data': data.get('data', {}),
+                    'message': 'success'
+                }
+            else:
+                return {
+                    'success': False,
+                    'data': None,
+                    'message': data.get('msg', '未知错误')
+                }
+                
+        except requests.exceptions.RequestException as e:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'请求失败: {str(e)}'
+            }
         except Exception as e:
             return {
                 'success': False,
@@ -830,34 +876,31 @@ class FeishuService:
             
             # 使用「根据记录ID查询记录详情」接口获取农户信息
             farmer_result = self.get_record_by_id_new('农户管理', product_id)
-            print(json.dumps(farmer_result))
+            #print(json.dumps(farmer_result))
             if farmer_result['success']:
                 # 更新产品信息
                 complete_info['product_info'] = farmer_result['data'].get('fields', {})
-            
+            farmer_name = complete_info['product_info'].get('饲养农户', '')
             # 从「饲喂记录」表获取饲喂记录
-            feeding_result = self.get_table_records_new('饲喂记录')
+            filter_str = f'CurrentValue.[农户]="{farmer_name}"'
+            feeding_result = self.get_table_records_filter('饲喂记录',filter_str)
+            print(json.dumps(feeding_result))
             if feeding_result['success']:
                 feeding_records = feeding_result['data'].get('items', [])
-                
+                #print(json.dumps(feeding_records))
                 # 处理饲喂记录
                 for record in feeding_records:
                     fields = record.get('fields', {})
-                    farmer_link = fields.get('农户', [])
-                    
-                    # 检查是否与当前农户关联
-                    if farmer_link and isinstance(farmer_link, list) and len(farmer_link) > 0:
-                        record_ids = farmer_link[0].get('record_ids', [])
-                        if product_id in record_ids:
-                            feeding_record = {
-                                'record_id': record.get('record_id'),
-                                'food_name': fields.get('食物', ''),
-                                'operator': fields.get('操作人', ''),
-                                'operation_time': fields.get('操作时间'),
-                                'created_time': fields.get('创建'),
-                                'updated_time': fields.get('更新')
-                            }
-                            complete_info['feeding_records'].append(feeding_record)
+                    feeding_record = {
+                        'record_id': record.get('record_id'),
+                        'food_name': fields.get('食物', ''),
+                        'operator': fields.get('操作人', ''),
+                        'operation_time': fields.get('操作时间'),
+                        'images': [f'/api/v1/img/{item["file_token"]}' for item in fields.get('图片', []) if isinstance(fields.get('图片'), list)],
+                        'created_time': fields.get('创建'),
+                        'updated_time': fields.get('更新')
+                    }
+                    complete_info['feeding_records'].append(feeding_record)
             
             # 从「养殖流程」表获取养殖流程
             breeding_result = self.get_table_records_new('养殖流程')

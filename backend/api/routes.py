@@ -324,6 +324,18 @@ def get_farm_info():
                 formatted_record = record.copy()
                 formatted_record['operation_time_formatted'] = format_timestamp(record.get('operation_time'))
                 formatted_record['created_time_formatted'] = format_timestamp(record.get('created_time'))
+                
+                # 处理 images 字段格式
+                if 'images' in formatted_record and formatted_record['images']:
+                    if isinstance(formatted_record['images'], list):
+                        processed_images = []
+                        for img in formatted_record['images']:
+                            if isinstance(img, dict) and 'file_token' in img:
+                                file_token = img['file_token']
+                                if file_token:
+                                    processed_images.append(f"/api/v1/img/{file_token}")
+                        formatted_record['images'] = processed_images
+                
                 breeding_process.append(formatted_record)
 
             # 处理产品信息中的封面图和监控地址格式
@@ -334,7 +346,7 @@ def get_farm_info():
                 if isinstance(product_info['封面图'], list) and len(product_info['封面图']) > 0:
                     file_token = product_info['封面图'][0].get('file_token', '')
                     if file_token:
-                        product_info['封面图'] = f"http://127.0.0.1:5000/api/v1/img/{file_token}"
+                        product_info['封面图'] = f"/api/v1/img/{file_token}"
                     else:
                         product_info['封面图'] = ""
                 else:
