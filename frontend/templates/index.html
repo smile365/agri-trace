@@ -87,15 +87,15 @@
         <div class="card">
             <h3 class="card-title">运动步数</h3>
             <div class="steps-info">
-                <div class="total-steps">1,730,445 步</div>
+                <div id="totalSteps" class="total-steps">0 步</div>
                 <div class="steps-details">
                     <div class="detail-item">
                         <span class="label">活动记录天数：</span>
-                        <span class="value">71 天</span>
+                        <span id="activityDays" class="value">0 天</span>
                     </div>
                     <div class="detail-item">
                         <span class="label">日均步数：</span>
-                        <span class="value">23,211 步</span>
+                        <span id="dailySteps" class="value">0 步</span>
                     </div>
                 </div>
             </div>
@@ -204,7 +204,7 @@
     <script>
         // 全局变量
         //const FLV_URL = 'http://192.168.15.250:8080/live/livestream-a.flv';
-        const FLV_URL = 'http://srs.pxact.com/live/recuu78lxajroy.flv';
+        let FLV_URL = 'http://srs.pxact.com/live/recuu78lxajroy.flv';
         let farmData = {};
         let productId = null;
         
@@ -356,8 +356,13 @@
                 }
                 
                 // 更新产品图片
-                if (farmData.product_info.首图) {
-                    document.getElementById('productImage').src = getImageUrl(farmData.product_info.首图);
+                if (farmData.product_info.封面图) {
+                    document.getElementById('productImage').src = farmData.product_info.封面图;
+                }
+                
+                // 更新监控地址
+                if (farmData.product_info.监控地址) {
+                    FLV_URL = farmData.product_info.监控地址.trim();
                 }
             }
         }
@@ -365,10 +370,30 @@
         // 更新查询时间
         function updateQueryTime() {
             const queryTimeElement = document.getElementById('queryTime');
-            if (farmData.product_info && farmData.product_info.第一次查询时间) {
-                queryTimeElement.textContent = farmData.product_info.第一次查询时间;
+            if (farmData.product_info && farmData.product_info.查询时间) {
+                // 将时间戳转换为日期字符串
+                const date = new Date(farmData.product_info.查询时间);
+                queryTimeElement.textContent = date.toLocaleDateString();
+                
+                // 计算活动记录天数（当前时间到第一次查询时间的天数）
+                const now = new Date();
+                const daysDiff = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+                document.getElementById('activityDays').textContent = daysDiff + ' 天';
+                
+                // 更新日均步数和总步数
+                if (farmData.product_info.日均步数) {
+                    const dailySteps = farmData.product_info.日均步数;
+                    document.getElementById('dailySteps').textContent = dailySteps + ' 步';
+                    
+                    // 计算总步数 = 日均步数 * 活动记录天数
+                    const totalSteps = dailySteps * daysDiff;
+                    document.getElementById('totalSteps').textContent = totalSteps + ' 步';
+                }
             } else {
                 queryTimeElement.textContent = '暂无数据';
+                document.getElementById('activityDays').textContent = '0 天';
+                document.getElementById('dailySteps').textContent = '0 步';
+                document.getElementById('totalSteps').textContent = '0 步';
             }
         }
         
@@ -382,8 +407,8 @@
         // 更新鸡舍地址
         function updateChickenHouseAddress() {
             const addressElement = document.getElementById('chickenHouseAddress');
-            if (farmData.product_info && farmData.product_info.鸡舍地址) {
-                addressElement.textContent = farmData.product_info.鸡舍地址;
+            if (farmData.product_info && farmData.product_info.地址) {
+                addressElement.textContent = farmData.product_info.地址;
             } else {
                 addressElement.textContent = '暂无地址信息';
             }
@@ -394,19 +419,20 @@
             const container = document.getElementById('productInfoContainer');
             container.innerHTML = ''; // 清空容器
             
-            if (farmData.product_info && farmData.product_info.商品信息) {
-                const items = getProductInfoItems();
-                items.forEach(item => {
+            if (farmData.product_info) {
+                // 直接使用product_info中的字段作为商品信息
+                const product_keys = ['商品名称', '是否有机', '国产/进口', '饲养农户', '养殖企业']
+                product_keys.forEach(pkey => {
                     const row = document.createElement('div');
                     row.className = 'info-row';
                     
                     const labelSpan = document.createElement('span');
                     labelSpan.className = 'info-label';
-                    labelSpan.textContent = item.label + '：';
+                    labelSpan.textContent = pkey + '：';
                     
                     const valueSpan = document.createElement('span');
                     valueSpan.className = 'info-value';
-                    valueSpan.textContent = item.value;
+                    valueSpan.textContent = farmData.product_info[pkey];
                     
                     row.appendChild(labelSpan);
                     row.appendChild(valueSpan);
@@ -436,9 +462,12 @@
                     
                     const img = document.createElement('img');
                     img.className = 'stage-image';
-                    img.alt = process.process_name;
+                    img.alt = process.process_name || process.name || '养殖流程';
                     
-                    if (process.images && process.images.length > 0) {
+                    // 检查是否有图片字段
+                    if (process.image) {
+                        img.src = process.image;
+                    } else if (process.images && process.images.length > 0) {
                         img.src = getImageUrl(process.images[0]);
                         
                         const badge = document.createElement('div');
@@ -455,10 +484,16 @@
                     info.className = 'timeline-info';
                     
                     const title = document.createElement('h4');
-                    title.textContent = process.process_name;
+                    title.textContent = process.process_name || process.name || '养殖流程';
                     
                     const time = document.createElement('p');
-                    time.textContent = process.operation_time_formatted || process.created_time_formatted || '时间未知';
+                    // 如果有时间戳，转换为日期字符串
+                    if (process.time) {
+                        const date = new Date(process.time);
+                        time.textContent = date.toLocaleDateString();
+                    } else {
+                        time.textContent = process.operation_time_formatted || process.created_time_formatted || '时间未知';
+                    }
                     
                     info.appendChild(title);
                     info.appendChild(time);
@@ -538,23 +573,7 @@
             }
         }
         
-        // 获取商品信息项
-        function getProductInfoItems() {
-            if (!farmData.product_info || !farmData.product_info.商品信息) {
-                return [];
-            }
-            
-            return farmData.product_info.商品信息.map(item => {
-                const keys = Object.keys(item).filter(key => key !== 'index');
-                const label = keys[0] || '';
-                const value = item[label] || '';
-                return {
-                    index: item.index,
-                    label: label,
-                    value: value
-                };
-            });
-        }
+        // 获取商品信息项 - 不再使用，直接在updateProductDetails中处理
         
         // 获取图片URL
         function getImageUrl(image) {
