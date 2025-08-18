@@ -808,10 +808,25 @@ class FeishuService:
         try:
             # 初始化结果数据
             complete_info = {
+                'sensor': {},
                 'product_info': {},
                 'feeding_records': [],
                 'breeding_process': []
             }
+            
+            # 从「传感器」表获取传感器数据
+            sensor_result = self.get_table_records_new('传感器')
+            if sensor_result['success']:
+                sensor_records = sensor_result['data'].get('items', [])
+                
+                # 处理传感器数据，将其转换为 {'温度': '26.0', '湿度': '47.0', ...} 格式
+                for record in sensor_records:
+                    fields = record.get('fields', {})
+                    sensor_name = fields.get('名称', '')
+                    sensor_value = fields.get('文本', '') or fields.get('数值', '')
+                    
+                    if sensor_name and sensor_value:
+                        complete_info['sensor'][sensor_name] = str(sensor_value)
             
             # 使用「根据记录ID查询记录详情」接口获取农户信息
             farmer_result = self.get_record_by_id_new('农户管理', product_id)

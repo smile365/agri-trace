@@ -366,6 +366,7 @@ def get_farm_info():
                 'code': 0,
                 'message': 'success',
                 'data': {
+                    'sensor': data.get('sensor', {}),
                     'product_info': product_info,
                     'feeding_records': feeding_records,
                     'breeding_process': breeding_process,
@@ -701,7 +702,6 @@ def update_sensor_data_to_feishu(humidity_temperature):
         # 2. 找到名称为"温度"和"湿度"的记录ID
         temperature_record_id = None
         humidity_record_id = None
-        print(records)
         for record in records:
             fields = record.get('fields', {})
             name = fields.get('名称', '')
