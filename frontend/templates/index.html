@@ -203,7 +203,8 @@
     </div>
     <script>
         // 全局变量
-        const FLV_URL = 'http://192.168.15.250:8080/live/livestream-a.flv';
+        //const FLV_URL = 'http://192.168.15.250:8080/live/livestream-a.flv';
+        const FLV_URL = 'http://srs.pxact.com/live/recuu78lxajroy.flv';
         let farmData = {};
         let productId = null;
         
@@ -226,7 +227,7 @@
                 var videoElement = document.getElementsByTagName('video')[0];
                 player = mpegts.createPlayer({
                     type: 'flv', 
-                    url: 'http://192.168.15.250:8080/live/livestream-a.flv',
+                    url: FLV_URL,
                     isLive: true, 
                     enableStashBuffer: false, 
                     liveSync: true
