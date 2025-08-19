@@ -635,7 +635,7 @@ def proxy_image(file_token):
 
 @api_v1.route('/dht/weather', methods=['GET'])
 def baidu_verify():
-    return 'e22c1b37c4260ac0fe1a2fae229f5eb1e99379d7286192e351d0e9aad29a5298'
+    return '5224476131448adb06c60a9f579ece03d56fcdbf611c35844c2ff2d9749f4532'
 
 import json
 
