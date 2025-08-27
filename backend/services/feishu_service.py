@@ -3,12 +3,14 @@
 """
 import sys
 import os
+from venv import logger
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import requests
 import json
 from typing import Dict, List, Optional
 from config import config
+from utils.time_formatter import TimeFormatter
 
 class FeishuService:
     """飞书API服务类"""
@@ -357,9 +359,11 @@ class FeishuService:
             
             data = response.json()
             if data.get('code') == 0 and data.get('data'):
+                table_time_formate = self.time_format_cache.get(table_name)
+                record = self.format_record_timestamp(data['data'].get('record'), table_time_formate)
                 return {
                     'success': True,
-                    'data': data['data'].get('record', {}),
+                    'data': record,
                     'message': 'success'
                 }
             else:
@@ -409,4 +413,19 @@ class FeishuService:
                 'message': f'请求失败: {str(e)}'
             }
 
+    def format_record_timestamp(self, record: Dict, table_time_formater: Dict) -> Dict:
+        """格式化记录中的时间戳"""
+        if not record:
+            return {}
+        fields = record.get('fields', {})
+        if not table_time_formater:
+            return fields
+        for field_name, time_format in table_time_formater.items():
+            value = fields.get(field_name)
+            fields[field_name] = TimeFormatter.format_timestamp(value, time_format)
+            logger.info(f"{field_name}:{value}, {time_format}:{fields[field_name]} ")
+        return fields
 
+
+            
+       
