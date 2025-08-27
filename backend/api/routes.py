@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from flask import Blueprint, jsonify, request, Response
 from services.feishu_service import feishu_service
-from utils.dht11_processor import decode_dht11_message
+from utils.lot_decode import decode_dht11_message,decode_nt1b_message
 import logging
 import requests
 
@@ -631,11 +631,37 @@ def proxy_image(file_token):
             'data': None
         }), 500
 
-
+@api_v1.route('/test/devices', methods=['GET', 'POST'])
+def show_test_devices():
+    # 打印请求参数 & 请求体等
+    # print(f'请求方法: {request.method}')
+    # print(f'URL参数: {request.args}')
+    # print(f'请求头: {dict(request.headers)}')
+    # print(f'完整URL: {request.url}')
+    # print(f'查询字符串: {request.query_string.decode()}')
+    
+    # 如果是POST请求，打印请求体
+    if request.method == 'POST':
+        #print(f'Content-Type: {request.content_type}')
+        if request.is_json:
+            original_data = decode_nt1b_message(request.get_json())
+            sensor_data = original_data['sensor_data']
+            print(f"传感器数据: {sensor_data}")
+        elif request.form:
+            print(f'表单数据: {request.form}')
+        else:
+            print(f'原始数据: {request.get_data().decode()}')
+    
+    return 'c05b4392ea4b5d4cd1464ef83be1dba00f30f662c17dc453c96a5794594191a0'
 
 @api_v1.route('/dht/weather', methods=['GET'])
 def baidu_verify():
-    return '5224476131448adb06c60a9f579ece03d56fcdbf611c35844c2ff2d9749f4532'
+    print(f'请求方法: {request.method}')
+    print(f'URL参数: {request.args}')
+    print(f'请求头: {dict(request.headers)}')
+    print(f'完整URL: {request.url}')
+    print(f'查询字符串: {request.query_string.decode()}')
+    return '35b6efa8616e4fbbc3f72e1476e367e139d97ab076a77ab5d1a0f3bcbe15d04b'
 
 import json
 
