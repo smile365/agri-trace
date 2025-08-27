@@ -114,62 +114,12 @@ def get_farm_info():
 
         if result['success']:
             data = result['data']
-            
-
-            #logger.info(f"成功获取农户 {farmer_info['farmer_name']} 的完整信息")
-
-            # 格式化时间戳
-            def format_timestamp(timestamp):
-                if timestamp and isinstance(timestamp, (int, float)):
-                    from datetime import datetime
-                    try:
-                        dt = datetime.fromtimestamp(timestamp / 1000)  # 飞书时间戳是毫秒
-                        return dt.strftime('%Y-%m-%d %H:%M:%S')
-                    except:
-                        return None
-                return None
-
-            # 处理饲喂记录时间格式
-            feeding_records = []
-            for record in data.get('feeding_records', []):
-                formatted_record = record.copy()
-                formatted_record['operation_time_formatted'] = format_timestamp(record.get('operation_time'))
-                formatted_record['created_time_formatted'] = format_timestamp(record.get('created_time'))
-                feeding_records.append(formatted_record)
-
+            feeding_records = data.get('feeding_records', [])
             # 处理养殖流程时间格式
-            breeding_process = []
-            for record in data.get('breeding_process', []):
-                formatted_record = record.copy()
-                formatted_record['operation_time_formatted'] = format_timestamp(record.get('operation_time'))
-                formatted_record['created_time_formatted'] = format_timestamp(record.get('created_time'))
-                
-                # 处理 images 字段格式
-                if 'images' in formatted_record and formatted_record['images']:
-                    if isinstance(formatted_record['images'], list):
-                        processed_images = []
-                        for img in formatted_record['images']:
-                            if isinstance(img, dict) and 'file_token' in img:
-                                file_token = img['file_token']
-                                if file_token:
-                                    processed_images.append(f"/api/v1/img/{file_token}")
-                        formatted_record['images'] = processed_images
-                
-                breeding_process.append(formatted_record)
+            breeding_process = data.get('breeding_process', [])
 
             # 处理产品信息中的封面图和监控地址格式
             product_info = data.get('product_info', {}).copy()
-            
-            # 修改封面图格式
-            if '封面图' in product_info and product_info['封面图']:
-                if isinstance(product_info['封面图'], list) and len(product_info['封面图']) > 0:
-                    file_token = product_info['封面图'][0].get('file_token', '')
-                    if file_token:
-                        product_info['封面图'] = f"/api/v1/img/{file_token}?num={tenant_num}"
-                    else:
-                        product_info['封面图'] = ""
-                else:
-                    product_info['封面图'] = ""
             
             # 修改监控地址格式
             if '监控地址' in product_info and product_info['监控地址'] and isinstance(product_info['监控地址'], list) and len(product_info['监控地址']) > 0:
@@ -186,13 +136,7 @@ def get_farm_info():
                         product_info['监控地址'] = "http://srs.pxact.com/live/recuu78lxajroy.flv"
             
             # 简化统计信息
-            statistics = {}
-            if data.get('statistics'):
-                statistics = {
-                    'feeding_count': data['statistics'].get('feeding_count', 0),
-                    'process_count': data['statistics'].get('process_count', 0)
-                }
-            
+            statistics = data.get('statistics')
             # 格式化响应数据
             response_data = {
                 'code': 0,

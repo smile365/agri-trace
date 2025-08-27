@@ -531,12 +531,7 @@
                     
                     const time = document.createElement('p');
                     // 如果有时间戳，转换为日期字符串
-                    if (process.time) {
-                        const date = new Date(process.time);
-                        time.textContent = date.toLocaleDateString();
-                    } else {
-                        time.textContent = process.operation_time_formatted || process.created_time_formatted || '时间未知';
-                    }
+                    time.textContent = process.operation_time || '时间未知';
                     
                     info.appendChild(title);
                     info.appendChild(time);
@@ -574,7 +569,7 @@
                     
                     const recordTime = document.createElement('div');
                     recordTime.className = 'record-time';
-                    recordTime.textContent = record.operation_time_formatted || record.created_time_formatted || '时间未知';
+                    recordTime.textContent = record.operation_time || '时间未知';
                     
                     const operatorName = document.createElement('div');
                     operatorName.className = 'operator-name';

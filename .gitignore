@@ -451,5 +451,5 @@ instance/
 # Local configuration overrides
 local_config.py
 local_settings.py
-.env
+*/.env
 

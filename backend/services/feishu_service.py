@@ -1,9 +1,12 @@
 """
 飞书API服务类
 """
+from multiprocessing import Value
 import sys
 import os
 from venv import logger
+
+from urllib3 import fields
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import requests
@@ -24,6 +27,7 @@ class FeishuService:
         # 数据表缓存
         self.tables_cache = {}
         self.time_format_cache = {}
+        self.attachment_fields_cache = {}
         # 初始化时获取数据表列表并缓存
         self._init_tables_cache()
         self._init_time_cache()
@@ -60,22 +64,36 @@ class FeishuService:
                 print(f"获取数据表列表失败: {data.get('msg', '未知错误')}")
         except Exception as e:
             print(f"初始化数据表缓存异常: {str(e)}")
-            
+
+    def get_table_fields(self, table_name: str) -> Dict:
+        # 从缓存中获取表ID
+        table_id = self.get_table_id_by_name(table_name)
+        if not table_id:
+            return []
+        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/fields"
+        response = requests.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        data = response.json()
+        if data.get('code') != 0:
+            return []
+        return data.get('data', {}).get('items', [])
+
     def _init_time_cache(self):
-        for name, table_id in self.tables_cache.items():
-            url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/fields"
-            response = requests.get(url, headers=self._get_headers())
-            response.raise_for_status()
-            data = response.json()
-            if data.get('code') == 0:
-                fields = data.get('data', {}).get('items', [])
-                for field in fields:
-                    if field.get('ui_type') == 'DateTime':
-                        if not self.time_format_cache.get(name):
-                            self.time_format_cache[name] = {}
-                        self.time_format_cache[name][field.get('field_name')] = field.get('property').get('date_formatter')
-                        #print(field)
-            print(f'{name}:{self.time_format_cache.get(name)}')
+        for name in self.tables_cache.keys():
+            fields = self.get_table_fields(name)
+            for field in fields:
+                
+                if field.get('ui_type') == 'DateTime':
+                    if not self.time_format_cache.get(name):
+                        self.time_format_cache[name] = {}
+                    self.time_format_cache[name][field.get('field_name')] = field.get('property').get('date_formatter')
+                elif field.get('ui_type') == 'Attachment':
+                    if not self.attachment_fields_cache.get(name):
+                        self.attachment_fields_cache[name] = []
+                    self.attachment_fields_cache[name].append(field.get('field_name'))
+                    #print(field)
+            print(f'time_format_cache,{name}:{self.time_format_cache.get(name)}')
+            print(f'attachment_fields_cache,{name}:{self.attachment_fields_cache.get(name)}')
         
 
     def get_table_id_by_name(self, table_name: str) -> str:
@@ -158,20 +176,16 @@ class FeishuService:
                     'data': None,
                     'message': data.get('msg', '未知错误')
                 }
-            table_time_formater = self.time_format_cache.get(table_name)
+            # table_time_formater = self.time_format_cache.get(table_name)
             items = data.get('data').get('items')
-            if not table_time_formater:
-                return {
-                    'success': False,
-                    'data': items,
-                    'message': f'未找到表名为 {table_name} 的时间格式化配置'
-                }
+            table_time_formater = self.time_format_cache.get(table_name)
+            table_attachment_fields = self.attachment_fields_cache.get(table_name)
+            records = []
             for item in items:
-                self.format_record_timestamp(item, table_time_formater)
-                print(item)
+                records.append(self.format_record(item.get('fields'),table_time_formater, table_attachment_fields))
             return {
                 'success': True,
-                'data': items,
+                'data': records,
                 'message': 'success'
             }
                 
@@ -231,22 +245,18 @@ class FeishuService:
             # 从「饲喂记录」表获取饲喂记录
             filter_str = f'CurrentValue.[农户]="{farmer_name}"'
             feeding_result = self.get_table_records_filter('饲喂记录',filter_str)
-            #print(json.dumps(feeding_result))
-            if feeding_result['success']:
+            #print(f'饲喂记录:{feeding_result}')
+            if feeding_result['data']:
                 feeding_records = feeding_result['data']
-                #print(json.dumps(feeding_records))
-                # 处理饲喂记录
                 complete_info['statistics']['feeding_count'] = len(feeding_records)
                 for record in feeding_records:
-                    fields = record.get('fields', {})
                     feeding_record = {
-                        'record_id': record.get('record_id'),
-                        'food_name': fields.get('食物', ''),
-                        'operator': fields.get('操作人', ''),
-                        'operation_time': fields.get('操作时间'),
-                        'images': [f'/api/v1/img/{item["file_token"]}' for item in fields.get('图片', []) if isinstance(fields.get('图片'), list)],
-                        'created_time': fields.get('创建'),
-                        'updated_time': fields.get('更新')
+                        'food_name': record.get('食物', ''),
+                        'operator': record.get('操作人', ''),
+                        'operation_time': record.get('操作时间'),
+                        'images': record.get('图片', []),
+                        'created_time': record.get('创建'),
+                        'updated_time': record.get('更新')
                     }
                     complete_info['feeding_records'].append(feeding_record)
             
@@ -256,15 +266,13 @@ class FeishuService:
                 breeding_records = breeding_result['data']
                 complete_info['statistics']['process_count'] = len(breeding_records)
                 # 处理养殖流程
-                for record in breeding_records:
-                    fields = record.get('fields', {})
+                for fields in breeding_records:
                     process_record = {
-                        'record_id': record.get('record_id'),
                         'process_name': fields.get('流程', ''),
                         'operation_time': fields.get('操作时间'),
                         'created_time': fields.get('创建'),
                         'updated_time': fields.get('更新'),
-                        'images': fields.get('图片', []) if isinstance(fields.get('图片'), list) else [],
+                        'images': fields.get('图片', []),
                         'operator': fields.get('操作人', '')
                     }
                     complete_info['breeding_process'].append(process_record)
@@ -363,22 +371,19 @@ class FeishuService:
         try:
             response = requests.get(url, headers=self._get_headers())
             response.raise_for_status()
-            
             data = response.json()
-            if data.get('code') == 0 and data.get('data'):
-                table_time_formate = self.time_format_cache.get(table_name)
-                record = self.format_record_timestamp(data['data'].get('record'), table_time_formate)
-                return {
-                    'success': True,
-                    'data': record,
-                    'message': 'success'
-                }
-            else:
-                return {
-                    'success': False,
-                    'data': None,
-                    'message': data.get('msg', '未知错误')
-                }
+            if not data.get('code') == 0 or not data.get('data'):
+                return data
+            table_time_formater = self.time_format_cache.get(table_name)
+            table_attachment_fields = self.attachment_fields_cache.get(table_name)
+            fields = data['data'].get('record',{}).get('fields',{})
+            record = self.format_record(fields, table_time_formater,table_attachment_fields)
+            return {
+                'success': True,
+                'data': record,
+                'message': 'success'
+            }
+
                 
         except requests.exceptions.RequestException as e:
             return {
@@ -420,13 +425,30 @@ class FeishuService:
                 'message': f'请求失败: {str(e)}'
             }
 
-    def format_record_timestamp(self, record: Dict, table_time_formater: Dict) -> Dict:
-        """格式化记录中的时间戳"""
-        if not record:
-            return {}
-        fields = record.get('fields', {})
-        if not table_time_formater:
+
+    def format_record(self, fields: Dict, table_time_formater: Dict, table_attachment_fields: List) -> Dict:
+        logger.debug(f"fields:{fields}, \n table_time_formater:{table_time_formater},  \n table_attachment_fields:{table_attachment_fields}")
+        if not table_time_formater and not table_attachment_fields:
             return fields
+        if not table_attachment_fields or len(table_attachment_fields) <1:
+            return self._format_record_timestamp(fields,table_time_formater)
+        for field_name in table_attachment_fields:
+            value = fields.get(field_name)
+            if value:
+                fields[field_name] = self._format_record_attachment(value)
+        return self._format_record_timestamp(fields,table_time_formater)
+
+    def _format_record_attachment(self, images: List) -> List:
+        processed_images = []
+        for img in images:
+            if isinstance(img, dict) and 'file_token' in img:
+                file_token = img['file_token']
+                if file_token:
+                    processed_images.append(f"/api/v1/img/{file_token}")
+        return processed_images
+
+    def _format_record_timestamp(self, fields: Dict, table_time_formater: Dict) -> Dict:
+        """格式化记录中的时间戳"""
         for field_name, time_format in table_time_formater.items():
             value = fields.get(field_name)
             fields[field_name] = TimeFormatter.format_timestamp(value, time_format)
