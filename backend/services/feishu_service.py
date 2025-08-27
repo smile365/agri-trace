@@ -16,22 +16,20 @@ class FeishuService:
     def __init__(self, app_token: str, personal_base_token: str ):
         self.base_url = config.FEISHU_API_BASE_URL
         self.app_token = app_token
-        self.personal_token = personal_base_token
-        # 新增飞书多维表格配置
         self.personal_base_token = personal_base_token
-        self.app_token_new = app_token
         if not app_token or not personal_base_token:
             raise ValueError(f"缺少必要的配置项: app_token={app_token}, personal_base_token={personal_base_token}")
         # 数据表缓存
         self.tables_cache = {}
-        
+        self.time_format_cache = {}
         # 初始化时获取数据表列表并缓存
         self._init_tables_cache()
+        self._init_time_cache()
         
     def _get_headers(self) -> Dict[str, str]:
         """获取请求头"""
         return {
-            'Authorization': f'Bearer {self.personal_token}',
+            'Authorization': f'Bearer {self.personal_base_token}',
             'Content-Type': 'application/json'
         }
         
@@ -40,7 +38,7 @@ class FeishuService:
         """初始化数据表缓存"""
         try:
             # 从飞书接口获取数据表列表
-            url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token_new}/tables"
+            url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token}/tables"
             response = requests.get(url, headers=self._get_headers())
             response.raise_for_status()
             
@@ -61,6 +59,23 @@ class FeishuService:
         except Exception as e:
             print(f"初始化数据表缓存异常: {str(e)}")
             
+    def _init_time_cache(self):
+        for name, table_id in self.tables_cache.items():
+            url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/fields"
+            response = requests.get(url, headers=self._get_headers())
+            response.raise_for_status()
+            data = response.json()
+            if data.get('code') == 0:
+                fields = data.get('data', {}).get('items', [])
+                for field in fields:
+                    if field.get('ui_type') == 'DateTime':
+                        if not self.time_format_cache.get(name):
+                            self.time_format_cache[name] = {}
+                        self.time_format_cache[name][field.get('field_name')] = field.get('property').get('date_formatter')
+                        #print(field)
+            print(f'{name}:{self.time_format_cache.get(name)}')
+        
+
     def get_table_id_by_name(self, table_name: str) -> str:
         """根据表名获取表ID"""
         return self.tables_cache.get(table_name, '')
@@ -83,7 +98,7 @@ class FeishuService:
                 'message': f'未找到表名为 {table_name} 的数据表'
             }
             
-        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token_new}/tables/{table_id}/records"
+        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records"
         
         try:
             response = requests.get(url, headers=self._get_headers())
@@ -129,7 +144,7 @@ class FeishuService:
                 'message': f'未找到表名为 {table_name} 的数据表'
             }
             
-        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token_new}/tables/{table_id}/records?filter={filter}"
+        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records?filter={filter}"
         
         try:
             response = requests.get(url, headers=self._get_headers())
@@ -259,85 +274,6 @@ class FeishuService:
                 'message': f'获取农户完整信息失败: {str(e)}'
             }
 
-    def get_table_fields_by_name(self, product_id: str, table_name: str) -> Dict:
-        """
-        根据产品ID和表名获取数据表的字段定义
-
-        Args:
-            product_id: 产品ID（农户记录ID）
-            table_name: 数据表名称
-
-        Returns:
-            包含字段定义的字典
-        """
-        # 首先获取农户信息和数据表列表
-        tables_result = self.get_farmer_tables(product_id)
-
-        if not tables_result['success']:
-            return tables_result
-
-        farmer_info = tables_result['data']['farmer_info']
-        tables = tables_result['data']['tables']
-
-        # 查找指定名称的数据表
-        target_table = None
-        for table in tables:
-            if table['table_name'] == table_name:
-                target_table = table
-                break
-
-        if not target_table:
-            return {
-                'success': False,
-                'data': None,
-                'message': f'未找到名称为 "{table_name}" 的数据表'
-            }
-
-        app_token = farmer_info['app_token']
-        auth_code = farmer_info['auth_code']
-        table_id = target_table['table_id']
-
-        # 获取字段定义
-        fields_result = self.get_table_fields(app_token, auth_code, table_id)
-
-        if not fields_result['success']:
-            return fields_result
-
-        # 处理字段定义数据
-        fields_data = fields_result['data']
-        fields = []
-
-        for field in fields_data.get('items', []):
-            field_info = {
-                'field_id': field.get('field_id'),
-                'field_name': field.get('field_name'),
-                'type': field.get('type'),
-                'property': field.get('property', {}),
-                'description': field.get('description', ''),
-                'is_primary': field.get('is_primary', False)
-            }
-            fields.append(field_info)
-
-        return {
-            'success': True,
-            'data': {
-                'table_info': {
-                    'table_id': target_table['table_id'],
-                    'table_name': target_table['table_name'],
-                    'revision': target_table['revision']
-                },
-                'farmer_info': {
-                    'product_id': farmer_info['product_id'],
-                    'farmer_name': farmer_info['farmer_name']
-                },
-                'fields': fields,
-                'total': len(fields),
-                'has_more': fields_data.get('has_more', False),
-                'page_token': fields_data.get('page_token')
-            },
-            'message': 'success'
-        }
-
     def batch_update_records(self, table_name: str, records: List[Dict]) -> Dict:
         """批量更新多条记录
         
@@ -357,7 +293,7 @@ class FeishuService:
                 'message': f'未找到表名为 {table_name} 的数据表'
             }
             
-        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token_new}/tables/{table_id}/records/batch_update"
+        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records/batch_update"
         
         payload = {
             "records": records
@@ -413,7 +349,7 @@ class FeishuService:
                 'message': f'未找到表名为 {table_name} 的数据表'
             }
             
-        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token_new}/tables/{table_id}/records/{record_id}"
+        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records/{record_id}"
         
         try:
             response = requests.get(url, headers=self._get_headers())
@@ -446,7 +382,7 @@ class FeishuService:
         Returns:
             包含表列表的字典
         """
-        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token_new}/tables"
+        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token}/tables"
         
         try:
             response = requests.get(url, headers=self._get_headers())
