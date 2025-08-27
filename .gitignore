@@ -197,10 +197,8 @@ Temporary Items
 .apdisk
 
 # Windows
-Thumbs.db
 Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
+
 
 # Dump file
 *.stackdump
@@ -386,7 +384,7 @@ logs/
 *.db
 *.sqlite
 *.sqlite3
-
+*.db.settings
 # Temporary files
 tmp/
 temp/

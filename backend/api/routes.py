@@ -11,13 +11,53 @@ from utils.lot_decode import decode_dht11_message,decode_nt1b_message
 import logging
 import requests
 from config import config
-
+from urllib.parse import parse_qs, urlparse
 # 创建API蓝图
 api_v1 = Blueprint('api_v1', __name__, url_prefix='/api/v1')
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+@api_v1.route('/live/callback', methods=['POST'])
+def live_callback():
+    """
+    直播回调接口
+    POST /live/callback HTTP/1.1
+    Content-Type: application/json
+    Body:
+        { 'param': '?id=recuU78lxajRoy&num=1', 'stream': 'u78lxajroy'}
+    """
+    data = request.json
+    logger.info(f'live_callback request data: {data}')
+    if not data:
+        return jsonify({'code': 400, 'msg': '缺少参数'}), 400
+    if data.get('action') != 'on_publish':
+        return jsonify({'code': 0, 'msg': 'ok'}), 200
+    param = data.get('param')
+    if not param:
+        return jsonify({'code': 400, 'msg': '缺少参数'}), 400
+    # 从param中提取 product_id 和 tenant_num
+    # param格式: '?id=recuU78lxajRoy&num=1'
+    try:
+        parsed = urlparse(param)
+        query_params = parse_qs(parsed.query)
+        
+        product_id = query_params.get('id', [None])[0]
+        tenant_num = query_params.get('num', [None])[0]
+        
+        if not product_id or not tenant_num:
+            return jsonify({'code': 400, 'msg': '参数格式错误，缺少id或num'}), 400
+            
+        # 转换tenant_num为整数
+        tenant_num = int(tenant_num)
+        
+    except (ValueError, TypeError) as e:
+        return jsonify({'code': 400, 'msg': '参数格式错误'}), 400
+    
+    if not tenant_service.validate_farmer_access(tenant_num, product_id.strip()):
+        return jsonify({'code': 403, 'msg': '无权限'}), 403
+    return jsonify({'code': 0, 'msg': 'ok'})
 
 
 @api_v1.route('/farm/info', methods=['GET'])
@@ -135,8 +175,9 @@ def get_farm_info():
             if '监控地址' in product_info and product_info['监控地址'] and isinstance(product_info['监控地址'], list) and len(product_info['监控地址']) > 0:
                     # 将 rtmp 协议改为 http，链接末尾增加 .flv
                     rtmp_url = product_info['监控地址'][0]['text']
+                    logger.info(f"原始监控地址: {rtmp_url}")
                     # 提取 rtmp 地址中的流标识符
-                    parts = rtmp_url.split('/')
+                    parts = rtmp_url.split('?')[0].split('/')
                     if len(parts) > 3:
                         stream_id = parts[-1]
                         product_info['监控地址'] = f"http://srs.pxact.com/live/{stream_id}.flv"
@@ -243,7 +284,7 @@ def proxy_image(file_token):
         # 使用FeishuService的认证头
         headers = tenant_service.get_tenant_feishu_service(tenant_num)._get_headers()
         # 发起代理请求
-        logger.info(f"向飞书请求图片: {feishu_url}")
+        logger.debug(f"向飞书请求图片: {feishu_url}")
         response = requests.get(feishu_url, headers=headers, stream=True, timeout=30)
         if response.status_code == 200:
             # 获取图片的Content-Type

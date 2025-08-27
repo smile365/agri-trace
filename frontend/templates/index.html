@@ -6,8 +6,7 @@
     <title>掌上农场 - 土鸡养殖追溯系统</title>
     <link rel="stylesheet" href="../static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- petite-vue 已移除 -->
-    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.js"></script>
+    
     <style>
         .play-pause-button {
             position: absolute;
@@ -67,7 +66,7 @@
         <!-- 用户信息区 -->
         <div class="card">
             <div class="chicken-info">
-                <img id="productImage" src="https://cdn.sxy21.cn/static/imgs/1754275189429.png" alt="农家散养土鸡" class="chicken-image">
+                <img id="productImage" src="" alt="农家散养土鸡" class="chicken-image">
                 <h3 id="productTitle" class="chicken-title">加载中...</h3>
             </div>
         </div>
@@ -201,9 +200,9 @@
             <!-- 喂养记录将通过JavaScript动态添加 -->
         </div>
     </div>
+    <script src="../static/js/mpegts.js"></script>
     <script>
         // 全局变量
-        //const FLV_URL = 'http://192.168.15.250:8080/live/livestream-a.flv';
         let FLV_URL = 'http://srs.pxact.com/live/recuu78lxajroy.flv';
         let farmData = {};
         let productId = null;
@@ -223,12 +222,17 @@
             loadData();
             // 添加事件监听
             setupEventListeners();
-            var player = null;
+           
+        }
+        
+        function initPlayer(flvUrl) {
+            let player = null;  
+            console.log('initPlayer', flvUrl);
             if (mpegts.getFeatureList().mseLivePlayback) {
                 var videoElement = document.getElementsByTagName('video')[0];
                 player = mpegts.createPlayer({
                     type: 'flv', 
-                    url: FLV_URL,
+                    url: flvUrl,
                     isLive: true, 
                     enableStashBuffer: false, 
                     liveSync: true
@@ -284,7 +288,6 @@
                 }
             }
         }
-        
         // 设置事件监听
         function setupEventListeners() {
             // 喂养记录按钮点击事件
@@ -374,6 +377,7 @@
                 // 更新监控地址
                 if (farmData.product_info.监控地址) {
                     FLV_URL = farmData.product_info.监控地址.trim();
+                    initPlayer(FLV_URL);
                 }
             }
         }

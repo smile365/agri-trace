@@ -878,7 +878,7 @@ class FeishuService:
             # 从「饲喂记录」表获取饲喂记录
             filter_str = f'CurrentValue.[农户]="{farmer_name}"'
             feeding_result = self.get_table_records_filter('饲喂记录',filter_str)
-            print(json.dumps(feeding_result))
+            #print(json.dumps(feeding_result))
             if feeding_result['success']:
                 feeding_records = feeding_result['data'].get('items', [])
                 #print(json.dumps(feeding_records))
