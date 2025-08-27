@@ -388,7 +388,7 @@
             if (farmData.product_info && farmData.product_info.查询时间) {
                 // 将时间戳转换为日期字符串
                 const date = new Date(farmData.product_info.查询时间);
-                queryTimeElement.textContent = date.toLocaleDateString();
+                queryTimeElement.textContent = farmData.product_info.查询时间;
                 
                 // 计算活动记录天数（当前时间到第一次查询时间的天数）
                 const now = new Date();

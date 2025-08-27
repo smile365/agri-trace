@@ -151,20 +151,30 @@ class FeishuService:
         try:
             response = requests.get(url, headers=self._get_headers())
             response.raise_for_status()
-            
             data = response.json()
-            if data.get('code') == 0:
-                return {
-                    'success': True,
-                    'data': data.get('data', {}),
-                    'message': 'success'
-                }
-            else:
+            if data.get('code') != 0 or not data.get('data'):
                 return {
                     'success': False,
                     'data': None,
                     'message': data.get('msg', '未知错误')
                 }
+            table_time_formater = self.time_format_cache.get(table_name)
+            items = data.get('data').get('items')
+            if not table_time_formater:
+                return {
+                    'success': False,
+                    'data': items,
+                    'message': f'未找到表名为 {table_name} 的时间格式化配置'
+                }
+            for item in items:
+                self.format_record_timestamp(item, table_time_formater)
+                print(item)
+            return {
+                'success': True,
+                'data': items,
+                'message': 'success'
+            }
+                
                 
         except requests.exceptions.RequestException as e:
             return {
@@ -216,17 +226,14 @@ class FeishuService:
             
             # 使用「根据记录ID查询记录详情」接口获取农户信息
             farmer_result = self.get_record_by_id('农户管理', product_id)
-            #print(json.dumps(farmer_result))
-            if farmer_result['success']:
-                # 更新产品信息
-                complete_info['product_info'] = farmer_result['data'].get('fields', {})
+            complete_info['product_info'] = farmer_result['data']
             farmer_name = complete_info['product_info'].get('饲养农户', '')
             # 从「饲喂记录」表获取饲喂记录
             filter_str = f'CurrentValue.[农户]="{farmer_name}"'
             feeding_result = self.get_table_records_filter('饲喂记录',filter_str)
             #print(json.dumps(feeding_result))
             if feeding_result['success']:
-                feeding_records = feeding_result['data'].get('items', [])
+                feeding_records = feeding_result['data']
                 #print(json.dumps(feeding_records))
                 # 处理饲喂记录
                 complete_info['statistics']['feeding_count'] = len(feeding_records)
@@ -246,7 +253,7 @@ class FeishuService:
             # 从「养殖流程」表获取养殖流程
             breeding_result = self.get_table_records_filter('养殖流程',filter_str)
             if breeding_result['success']:
-                breeding_records = breeding_result['data'].get('items', [])
+                breeding_records = breeding_result['data']
                 complete_info['statistics']['process_count'] = len(breeding_records)
                 # 处理养殖流程
                 for record in breeding_records:
