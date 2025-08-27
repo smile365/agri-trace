@@ -208,30 +208,7 @@ def get_farm_info():
 
             return jsonify(response_data), 200
         else:
-            logger.error(f"获取农户完整信息失败: {result['message']}")
-
-            # 判断错误类型
-            if 'RecordIdNotFound' in result['message'] or '404' in result['message']:
-                error_response = {
-                    'code': 1,
-                    'message': '未找到指定的产品',
-                    'data': None
-                }
-                return jsonify(error_response), 404
-            elif '缺少必要的API配置信息' in result['message']:
-                error_response = {
-                    'code': 1,
-                    'message': result['message'],
-                    'data': None
-                }
-                return jsonify(error_response), 400
-            else:
-                error_response = {
-                    'code': 1,
-                    'message': result['message'],
-                    'data': None
-                }
-                return jsonify(error_response), 500
+            return jsonify(result), 500
 
     except Exception as e:
         logger.error(f"获取农户完整信息异常: {str(e)}")
@@ -441,7 +418,7 @@ def update_sensor_data_to_feishu(humidity_temperature, tenant_num):
     """
     try:
         # 1. 从数据表缓存中获取「传感器」表的所有记录
-        records_result = tenant_service.get_tenant_feishu_service(tenant_num).get_table_records_new('传感器')
+        records_result = tenant_service.get_tenant_feishu_service(tenant_num).get_table_records('传感器')
         if not records_result['success']:
             return {
                 'success': False,

@@ -76,7 +76,7 @@ class TenantService:
             logger.debug("开始从系统管理表加载租户信息")
             
             # 获取系统管理表数据
-            result = self.system_feishu_service.get_table_records_new(self.system_table_name)
+            result = self.system_feishu_service.get_table_records(self.system_table_name)
             
             if not result['success']:
                 logger.error(f"获取系统管理表数据失败: {result['message']}")
@@ -174,7 +174,7 @@ class TenantService:
             # 获取租户表信息
             tenant_feishu = self.get_tenant_feishu_service(tenant_num)
             
-            farmer_data = tenant_feishu.get_table_records_new('农户管理')
+            farmer_data = tenant_feishu.get_table_records('农户管理')
             if not farmer_data['success']:
                 logger.error(f"获取农户管理表数据失败: {farmer_data['message']}")
                 return False
