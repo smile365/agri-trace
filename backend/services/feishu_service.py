@@ -13,15 +13,15 @@ from config import config
 class FeishuService:
     """飞书API服务类"""
 
-    def __init__(self):
+    def __init__(self, app_token: str, personal_base_token: str ):
         self.base_url = config.FEISHU_API_BASE_URL
-        self.app_token = config.APP_TOKEN
-        self.personal_token = config.PERSONAL_BASE_TOKEN
-        
+        self.app_token = app_token
+        self.personal_token = personal_base_token
         # 新增飞书多维表格配置
-        self.personal_base_token = config.PERSONAL_BASE_TOKEN
-        self.app_token_new = config.APP_TOKEN
-        
+        self.personal_base_token = personal_base_token
+        self.app_token_new = app_token
+        if not app_token or not personal_base_token:
+            raise ValueError(f"缺少必要的配置项: app_token={app_token}, personal_base_token={personal_base_token}")
         # 数据表缓存
         self.tables_cache = {}
         
@@ -38,19 +38,13 @@ class FeishuService:
             'Content-Type': 'application/json'
         }
         
-    def _get_headers_new(self) -> Dict[str, str]:
-        """获取新的请求头（使用PERSONAL_BASE_TOKEN）"""
-        return {
-            'Authorization': f'Bearer {self.personal_base_token}',
-            'Content-Type': 'application/json'
-        }
         
     def _init_tables_cache(self):
         """初始化数据表缓存"""
         try:
             # 从飞书接口获取数据表列表
             url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token_new}/tables"
-            response = requests.get(url, headers=self._get_headers_new())
+            response = requests.get(url, headers=self._get_headers())
             response.raise_for_status()
             
             data = response.json()
@@ -64,7 +58,7 @@ class FeishuService:
                     if table_name and table_id:
                         self.tables_cache[table_name] = table_id
                         
-                print(f"成功缓存 {len(self.tables_cache)} 个数据表信息")
+                #print(f"成功缓存 {len(self.tables_cache)} 个数据表信息")
             else:
                 print(f"获取数据表列表失败: {data.get('msg', '未知错误')}")
         except Exception as e:
@@ -95,7 +89,7 @@ class FeishuService:
         url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token_new}/tables/{table_id}/records"
         
         try:
-            response = requests.get(url, headers=self._get_headers_new())
+            response = requests.get(url, headers=self._get_headers())
             response.raise_for_status()
             
             data = response.json()
@@ -141,7 +135,7 @@ class FeishuService:
         url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token_new}/tables/{table_id}/records?filter={filter}"
         
         try:
-            response = requests.get(url, headers=self._get_headers_new())
+            response = requests.get(url, headers=self._get_headers())
             response.raise_for_status()
             
             data = response.json()
@@ -193,7 +187,7 @@ class FeishuService:
         url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token_new}/tables/{table_id}/records/{record_id}"
         
         try:
-            response = requests.get(url, headers=self._get_headers_new())
+            response = requests.get(url, headers=self._get_headers())
             response.raise_for_status()
             
             data = response.json()
@@ -1099,7 +1093,7 @@ class FeishuService:
         }
         
         try:
-            response = requests.post(url, headers=self._get_headers_new(), json=payload)
+            response = requests.post(url, headers=self._get_headers(), json=payload)
             response.raise_for_status()
             
             data = response.json()
@@ -1128,6 +1122,85 @@ class FeishuService:
                 'data': None,
                 'message': f'处理失败: {str(e)}'
             }
+    
+    def get_record_by_id(self, table_name: str, record_id: str) -> Dict:
+        """根据记录ID获取单条记录
+        
+        Args:
+            table_name: 表名
+            record_id: 记录ID
+            
+        Returns:
+            包含记录数据的字典
+        """
+        # 从缓存中获取表ID
+        table_id = self.get_table_id_by_name(table_name)
+        if not table_id:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'未找到表名为 {table_name} 的数据表'
+            }
+            
+        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token_new}/tables/{table_id}/records/{record_id}"
+        
+        try:
+            response = requests.get(url, headers=self._get_headers())
+            response.raise_for_status()
+            
+            data = response.json()
+            if data.get('code') == 0:
+                return {
+                    'success': True,
+                    'data': data.get('data', {}),
+                    'message': 'success'
+                }
+            else:
+                return {
+                    'success': False,
+                    'data': None,
+                    'message': data.get('msg', '未知错误')
+                }
+                
+        except requests.exceptions.RequestException as e:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'请求失败: {str(e)}'
+            }
+    
+    def get_tables_list(self) -> Dict:
+        """获取应用下的所有表列表
+        
+        Returns:
+            包含表列表的字典
+        """
+        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token_new}/tables"
+        
+        try:
+            response = requests.get(url, headers=self._get_headers())
+            response.raise_for_status()
+            
+            data = response.json()
+            if data.get('code') == 0:
+                return {
+                    'success': True,
+                    'data': data.get('data', {}),
+                    'message': 'success'
+                }
+            else:
+                return {
+                    'success': False,
+                    'data': None,
+                    'message': data.get('msg', '未知错误')
+                }
+                
+        except requests.exceptions.RequestException as e:
+            return {
+                'success': False,
+                'data': None,
+                'message': f'请求失败: {str(e)}'
+            }
 
-# 创建服务实例
-feishu_service = FeishuService()
+
+

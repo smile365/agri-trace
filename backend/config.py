@@ -17,6 +17,15 @@ class Config:
     PERSONAL_BASE_TOKEN = os.environ.get('PERSONAL_BASE_TOKEN')
     APP_TOKEN = os.environ.get('APP_TOKEN')
     
+    # 多租户系统配置
+    SYS_APP_TOKEN = os.environ.get('SYS_APP_TOKEN')
+    SYS_PERSONAL_BASE_TOKEN = os.environ.get('SYS_PERSONAL_BASE_TOKEN')
+    SYSTEM_TABLE_NAME = os.environ.get('SYSTEM_TABLE_NAME', '授权列表')
+    
+    # 缓存更新配置
+    CACHE_UPDATE_INTERVAL = int(os.environ.get('CACHE_UPDATE_INTERVAL', 5))
+    REDIS_DB_PATH = os.environ.get('REDIS_DB_PATH', 'cache.db')
+    
     # Flask应用配置
     FLASK_ENV = os.environ.get('FLASK_ENV', 'development')
     FLASK_DEBUG = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
@@ -40,8 +49,8 @@ class Config:
     def validate(cls):
         """验证必要的配置项是否存在"""
         required_configs = [
-            'PERSONAL_BASE_TOKEN',
-            'APP_TOKEN'
+            'SYS_APP_TOKEN',
+            'SYS_PERSONAL_BASE_TOKEN'
         ]
         
         missing_configs = []

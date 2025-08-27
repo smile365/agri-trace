@@ -10,6 +10,7 @@ from flask_cors import CORS
 import logging
 from config import config
 from api.routes import api_v1
+from services.tenant_service import tenant_service
 
 def create_app():
     """创建Flask应用"""
@@ -31,6 +32,9 @@ def create_app():
     
     # 注册蓝图
     app.register_blueprint(api_v1)
+    
+    # 初始化多租户系统
+    init_multi_tenant_system(app)
     
     # 根路径 - API文档
     @app.route('/')
@@ -113,6 +117,29 @@ def setup_logging(app):
         app.logger.setLevel(getattr(logging, config.LOG_LEVEL))
         app.logger.info('农产品溯源系统启动')
 
+def init_multi_tenant_system(app):
+    """初始化多租户系统"""
+    try:
+        #print("正在初始化多租户系统...")
+        
+        # 初始化缓存数据
+        if tenant_service.initialize_cache():
+            #print("✓ 多租户缓存初始化成功")
+            
+            # 启动缓存更新调度器
+            tenant_service.start_cache_update_scheduler()
+            #print("✓ 缓存更新调度器启动成功")
+            
+            # 获取统计信息
+            stats = tenant_service.get_tenant_stats()
+            print(f"✓ 多租户系统就绪，共加载 {stats['total_tenants']} 个租户")
+        else:
+            print("⚠ 多租户缓存初始化失败，系统将以单租户模式运行")
+            
+    except Exception as e:
+        print(f"⚠ 多租户系统初始化异常: {str(e)}")
+        print("系统将以单租户模式运行")
+
 if __name__ == '__main__':
     try:
         # 验证配置
@@ -121,7 +148,7 @@ if __name__ == '__main__':
         
         # 创建应用
         app = create_app()
-        
+
         print(f"启动Flask应用...")
         print(f"访问地址: http://{config.FLASK_HOST}:{config.FLASK_PORT}")
         print(f"API文档: http://{config.FLASK_HOST}:{config.FLASK_PORT}/api/v1/products")
@@ -132,7 +159,6 @@ if __name__ == '__main__':
             port=config.FLASK_PORT,
             debug=config.FLASK_DEBUG
         )
-        
     except Exception as e:
         print(f"✗ 启动失败: {str(e)}")
         exit(1)

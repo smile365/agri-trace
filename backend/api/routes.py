@@ -6,10 +6,11 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from flask import Blueprint, jsonify, request, Response
-from services.feishu_service import feishu_service
+from services.tenant_service import tenant_service
 from utils.lot_decode import decode_dht11_message,decode_nt1b_message
 import logging
 import requests
+from config import config
 
 # 创建API蓝图
 api_v1 = Blueprint('api_v1', __name__, url_prefix='/api/v1')
@@ -18,251 +19,6 @@ api_v1 = Blueprint('api_v1', __name__, url_prefix='/api/v1')
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-@api_v1.route('/products', methods=['GET'])
-def get_products():
-    """
-    获取产品列表（农户列表）
-    
-    Returns:
-        JSON响应包含农户列表数据
-    """
-    try:
-        logger.info("开始获取产品列表")
-        
-        # 从飞书获取农户列表
-        result = feishu_service.get_farmer_list()
-        
-        if result['success']:
-            logger.info(f"成功获取 {len(result['data']['farmers'])} 个产品")
-            
-            # 格式化响应数据
-            products = []
-            for farmer in result['data']['farmers']:
-                product = {
-                    'product_id': farmer['record_id'],
-                    'product_name': farmer['farmer_name'],
-                    'app_token': farmer['app_token'],
-                    'auth_code': farmer['auth_code'],
-                    'created_time': farmer['created_time'],
-                    'last_modified_time': farmer['last_modified_time']
-                }
-                products.append(product)
-            
-            response_data = {
-                'code': 0,
-                'message': 'success',
-                'data': {
-                    'products': products,
-                    'total': result['data']['total'],
-                    'has_more': result['data']['has_more']
-                }
-            }
-            
-            return jsonify(response_data), 200
-        else:
-            logger.error(f"获取产品列表失败: {result['message']}")
-            
-            error_response = {
-                'code': 1,
-                'message': result['message'],
-                'data': None
-            }
-            
-            return jsonify(error_response), 500
-            
-    except Exception as e:
-        logger.error(f"获取产品列表异常: {str(e)}")
-        
-        error_response = {
-            'code': 1,
-            'message': f'服务器内部错误: {str(e)}',
-            'data': None
-        }
-        
-        return jsonify(error_response), 500
-
-@api_v1.route('/product/<string:product_id>', methods=['GET'])
-def get_product_detail(product_id):
-    """
-    获取单个产品详情
-
-    Args:
-        product_id: 产品ID（农户记录ID）
-
-    Returns:
-        JSON响应包含产品详情数据
-    """
-    try:
-        logger.info(f"开始获取产品详情，产品ID: {product_id}")
-
-        # 验证产品ID格式
-        if not product_id or len(product_id.strip()) == 0:
-            error_response = {
-                'code': 1,
-                'message': '产品ID不能为空',
-                'data': None
-            }
-            return jsonify(error_response), 400
-
-        # 从飞书获取农户详情
-        result = feishu_service.get_farmer_by_id(product_id.strip())
-
-        if result['success']:
-            farmer_data = result['data']
-
-            # 检查是否找到记录
-            if not farmer_data or not farmer_data.get('record_id'):
-                error_response = {
-                    'code': 1,
-                    'message': '未找到指定的产品',
-                    'data': None
-                }
-                return jsonify(error_response), 404
-
-            logger.info(f"成功获取产品详情: {farmer_data.get('farmer_name', '未知')}")
-
-            # 格式化响应数据
-            product_detail = {
-                'product_id': farmer_data['record_id'],
-                'product_name': farmer_data['farmer_name'],
-                'app_token': farmer_data['app_token'],
-                'auth_code': farmer_data['auth_code'],
-                'contact': farmer_data.get('contact', ''),
-                'address': farmer_data.get('address', ''),
-                'created_time': farmer_data['created_time'],
-                'last_modified_time': farmer_data['last_modified_time'],
-                'created_by': farmer_data.get('created_by'),
-                'last_modified_by': farmer_data.get('last_modified_by')
-            }
-
-            response_data = {
-                'code': 0,
-                'message': 'success',
-                'data': product_detail
-            }
-
-            return jsonify(response_data), 200
-        else:
-            logger.error(f"获取产品详情失败: {result['message']}")
-
-            # 判断是否为404错误
-            if '404' in result['message'] or 'not found' in result['message'].lower():
-                error_response = {
-                    'code': 1,
-                    'message': '未找到指定的产品',
-                    'data': None
-                }
-                return jsonify(error_response), 404
-            else:
-                error_response = {
-                    'code': 1,
-                    'message': result['message'],
-                    'data': None
-                }
-                return jsonify(error_response), 500
-
-    except Exception as e:
-        logger.error(f"获取产品详情异常: {str(e)}")
-
-        error_response = {
-            'code': 1,
-            'message': f'服务器内部错误: {str(e)}',
-            'data': None
-        }
-
-        return jsonify(error_response), 500
-
-@api_v1.route('/farm/tables', methods=['GET'])
-def get_farm_tables():
-    """
-    获取农户的数据表列表
-
-    Query Parameters:
-        product_id: 产品ID（农户记录ID）
-
-    Returns:
-        JSON响应包含农户的数据表列表
-    """
-    try:
-        # 获取查询参数
-        product_id = request.args.get('product_id')
-
-        logger.info(f"开始获取农户数据表列表，产品ID: {product_id}")
-
-        # 验证产品ID参数
-        if not product_id or len(product_id.strip()) == 0:
-            error_response = {
-                'code': 1,
-                'message': '缺少必要参数：product_id',
-                'data': None
-            }
-            return jsonify(error_response), 400
-
-        # 从飞书获取农户数据表列表
-        result = feishu_service.get_farmer_tables(product_id.strip())
-
-        if result['success']:
-            data = result['data']
-            farmer_info = data['farmer_info']
-            tables = data['tables']
-
-            logger.info(f"成功获取农户 {farmer_info['farmer_name']} 的 {len(tables)} 个数据表")
-
-            # 格式化响应数据
-            response_data = {
-                'code': 0,
-                'message': 'success',
-                'data': {
-                    'farmer_info': {
-                        'product_id': farmer_info['product_id'],
-                        'farmer_name': farmer_info['farmer_name'],
-                        'app_token': farmer_info['app_token']
-                        # 注意：出于安全考虑，不在响应中返回完整的授权码
-                    },
-                    'tables': tables,
-                    'total': data['total'],
-                    'has_more': data['has_more'],
-                    'page_token': data.get('page_token')
-                }
-            }
-
-            return jsonify(response_data), 200
-        else:
-            logger.error(f"获取农户数据表列表失败: {result['message']}")
-
-            # 判断错误类型
-            if 'RecordIdNotFound' in result['message'] or '404' in result['message']:
-                error_response = {
-                    'code': 1,
-                    'message': '未找到指定的产品',
-                    'data': None
-                }
-                return jsonify(error_response), 404
-            elif '缺少必要的API配置信息' in result['message']:
-                error_response = {
-                    'code': 1,
-                    'message': result['message'],
-                    'data': None
-                }
-                return jsonify(error_response), 400
-            else:
-                error_response = {
-                    'code': 1,
-                    'message': result['message'],
-                    'data': None
-                }
-                return jsonify(error_response), 500
-
-    except Exception as e:
-        logger.error(f"获取农户数据表列表异常: {str(e)}")
-
-        error_response = {
-            'code': 1,
-            'message': f'服务器内部错误: {str(e)}',
-            'data': None
-        }
-
-        return jsonify(error_response), 500
 
 @api_v1.route('/farm/info', methods=['GET'])
 def get_farm_info():
@@ -278,8 +34,9 @@ def get_farm_info():
     try:
         # 获取查询参数
         product_id = request.args.get('product_id')
+        tenant_num = request.args.get('tenant_num') or 1
 
-        logger.info(f"开始获取农户完整信息，产品ID: {product_id}")
+        logger.debug(f"开始获取农户完整信息，产品ID: {product_id}, 租户编号: {tenant_num}")
 
         # 验证产品ID参数
         if not product_id or len(product_id.strip()) == 0:
@@ -289,9 +46,31 @@ def get_farm_info():
                 'data': None
             }
             return jsonify(error_response), 400
+        
+        # 验证租户编号是否有效
+        tenant_info = tenant_service.get_tenant_info(tenant_num)
+        if not tenant_info:
+            error_response = {
+                'code': 1,
+                'message': '无效的租户编号',
+                'data': None
+            }
+            return jsonify(error_response), 403
+        
+        # 验证农户ID是否在该租户的授权列表中
+        if not tenant_service.validate_farmer_access(tenant_num, product_id.strip()):
+            error_response = {
+                'code': 1,
+                'message': '此记录不存在或授权农户数量已超限额',
+                'data': None
+            }
+            return jsonify(error_response), 403
+        
+        # 使用租户专用的飞书服务获取数据
+        result = tenant_service.get_tenant_farm_info(tenant_num, product_id.strip())
 
-        # 从飞书获取农户完整信息
-        result = feishu_service.get_farm_complete_info(product_id.strip())
+
+        # 数据获取逻辑已在上面的多租户验证中处理
 
         if result['success']:
             data = result['data']
@@ -346,7 +125,7 @@ def get_farm_info():
                 if isinstance(product_info['封面图'], list) and len(product_info['封面图']) > 0:
                     file_token = product_info['封面图'][0].get('file_token', '')
                     if file_token:
-                        product_info['封面图'] = f"/api/v1/img/{file_token}"
+                        product_info['封面图'] = f"/api/v1/img/{file_token}?num={tenant_num}"
                     else:
                         product_info['封面图'] = ""
                 else:
@@ -424,111 +203,7 @@ def get_farm_info():
 
         return jsonify(error_response), 500
 
-@api_v1.route('/farm/table/fields', methods=['GET'])
-def get_table_fields():
-    """
-    获取数据表的字段定义（Admin接口）
 
-    Query Parameters:
-        product_id: 产品ID（农户记录ID）
-        tname: 数据表名称
-
-    Returns:
-        JSON响应包含数据表的字段定义
-    """
-    try:
-        # 获取查询参数
-        product_id = request.args.get('product_id')
-        table_name = request.args.get('tname')
-
-        logger.info(f"开始获取数据表字段定义，产品ID: {product_id}, 表名: {table_name}")
-
-        # 验证必要参数
-        if not product_id or len(product_id.strip()) == 0:
-            error_response = {
-                'code': 1,
-                'message': '缺少必要参数：product_id',
-                'data': None
-            }
-            return jsonify(error_response), 400
-
-        if not table_name or len(table_name.strip()) == 0:
-            error_response = {
-                'code': 1,
-                'message': '缺少必要参数：tname（数据表名称）',
-                'data': None
-            }
-            return jsonify(error_response), 400
-
-        # 从飞书获取数据表字段定义
-        result = feishu_service.get_table_fields_by_name(product_id.strip(), table_name.strip())
-
-        if result['success']:
-            data = result['data']
-            table_info = data['table_info']
-            farmer_info = data['farmer_info']
-            fields = data['fields']
-
-            logger.info(f"成功获取农户 {farmer_info['farmer_name']} 的数据表 {table_info['table_name']} 的 {len(fields)} 个字段定义")
-
-            # 格式化响应数据
-            response_data = {
-                'code': 0,
-                'message': 'success',
-                'data': {
-                    'table_info': table_info,
-                    'farmer_info': farmer_info,
-                    'fields': fields,
-                    'total': data['total'],
-                    'has_more': data['has_more'],
-                    'page_token': data.get('page_token')
-                }
-            }
-
-            return jsonify(response_data), 200
-        else:
-            logger.error(f"获取数据表字段定义失败: {result['message']}")
-
-            # 判断错误类型
-            if 'RecordIdNotFound' in result['message'] or '404' in result['message']:
-                error_response = {
-                    'code': 1,
-                    'message': '未找到指定的产品',
-                    'data': None
-                }
-                return jsonify(error_response), 404
-            elif '未找到名称为' in result['message']:
-                error_response = {
-                    'code': 1,
-                    'message': result['message'],
-                    'data': None
-                }
-                return jsonify(error_response), 404
-            elif '缺少必要的API配置信息' in result['message']:
-                error_response = {
-                    'code': 1,
-                    'message': result['message'],
-                    'data': None
-                }
-                return jsonify(error_response), 400
-            else:
-                error_response = {
-                    'code': 1,
-                    'message': result['message'],
-                    'data': None
-                }
-                return jsonify(error_response), 500
-
-    except Exception as e:
-        logger.error(f"获取数据表字段定义异常: {str(e)}")
-
-        error_response = {
-            'code': 1,
-            'message': f'服务器内部错误: {str(e)}',
-            'data': None
-        }
-
-        return jsonify(error_response), 500
 
 @api_v1.route('/health', methods=['GET'])
 def health_check():
@@ -559,21 +234,17 @@ def proxy_image(file_token):
         图片数据流
     """
     try:
-        logger.info(f"开始代理图片，文件令牌: {file_token}")
-
+        logger.debug(f"开始代理图片，文件令牌: {file_token}")
+        # 获取查询参数
+        tenant_num = request.args.get('num') or '1'
         # 构建飞书图片下载URL - 使用base-api域名
-        feishu_url = f"https://base-api.feishu.cn/open-apis/drive/v1/medias/{file_token}/download"
+        feishu_url = f"{config.FEISHU_API_BASE_URL}/open-apis/drive/v1/medias/{file_token}/download"
 
         # 使用FeishuService的认证头
-        headers = feishu_service._get_headers()
-        headers['User-Agent'] = 'Farm-Traceability-System/1.0'
-
-        logger.info(f"使用认证头: Authorization: Bearer {feishu_service.personal_token[:20]}...")
-
+        headers = tenant_service.get_tenant_feishu_service(tenant_num)._get_headers()
         # 发起代理请求
         logger.info(f"向飞书请求图片: {feishu_url}")
         response = requests.get(feishu_url, headers=headers, stream=True, timeout=30)
-
         if response.status_code == 200:
             # 获取图片的Content-Type
             content_type = response.headers.get('Content-Type', 'image/jpeg')
@@ -686,12 +357,13 @@ def show_weather_info():
         humidity_temperature = decode_dht11_message(data)
         data['message'] = humidity_temperature
         logger.debug(f"解码后的DHT11数据: {json.dumps(data)}")
-        
+        # 获取查询参数
+        tenant_num = request.args.get('num') or 1
         # 检查数据是否与上次相同
         if last_humidity_temperature != humidity_temperature:
             # 数据有变化，更新飞书表格
             try:
-                update_result = update_sensor_data_to_feishu(humidity_temperature)
+                update_result = update_sensor_data_to_feishu(humidity_temperature, tenant_num)
                 if update_result['success']:
                     logger.info(f"成功更新飞书传感器数据: {humidity_temperature}")
                     # 更新缓存
@@ -716,7 +388,7 @@ def show_weather_info():
             'data': None
         }), 400
 
-def update_sensor_data_to_feishu(humidity_temperature):
+def update_sensor_data_to_feishu(humidity_temperature, tenant_num):
     """
     更新传感器数据到飞书表格
     
@@ -728,7 +400,7 @@ def update_sensor_data_to_feishu(humidity_temperature):
     """
     try:
         # 1. 从数据表缓存中获取「传感器」表的所有记录
-        records_result = feishu_service.get_table_records_new('传感器')
+        records_result = tenant_service.get_tenant_feishu_service(tenant_num).get_table_records_new('传感器')
         if not records_result['success']:
             return {
                 'success': False,

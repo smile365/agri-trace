@@ -207,6 +207,7 @@
         let FLV_URL = 'http://srs.pxact.com/live/recuu78lxajroy.flv';
         let farmData = {};
         let productId = null;
+        let tenantNum = null;
         
         // 页面加载完成后执行
         document.addEventListener('DOMContentLoaded', function() {
@@ -294,10 +295,11 @@
             document.getElementById('retryButton').addEventListener('click', loadData);
         }
         
-        // 从URL获取产品ID
+        // 从URL获取产品ID和租户编号
         function getProductIdFromUrl() {
             const urlParams = new URLSearchParams(window.location.search);
             productId = urlParams.get('id') || 'recuT512gzx6yw'; // 默认值
+            tenantNum = urlParams.get('num') || ''; // 租户编号
         }
         
         // 加载数据
@@ -306,7 +308,13 @@
             hideError();
             
             try {
-                const response = await fetch(`/api/v1/farm/info?product_id=${productId}`);
+                // 构建API请求URL，支持多租户参数
+                let apiUrl = `/api/v1/farm/info?product_id=${productId}`;
+                if (tenantNum) {
+                    apiUrl += `&tenant_num=${tenantNum}`;
+                }
+                
+                const response = await fetch(apiUrl);
                 const result = await response.json();
                 
                 if (result.code === 0) {
