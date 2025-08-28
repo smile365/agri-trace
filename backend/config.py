@@ -37,7 +37,7 @@ class Config:
     LOG_FILE = os.environ.get('LOG_FILE', 'logs/app.log')
     
     # 缓存配置
-    CACHE_TIMEOUT = int(os.environ.get('CACHE_TIMEOUT', 300))
+    CACHE_TIMEOUT = int(os.environ.get('CACHE_TIMEOUT', 3000))
     
     # API限流配置
     API_RATE_LIMIT = int(os.environ.get('API_RATE_LIMIT', 100))

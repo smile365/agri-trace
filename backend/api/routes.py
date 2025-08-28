@@ -7,11 +7,14 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from flask import Blueprint, jsonify, request, Response
 from services.tenant_service import tenant_service
-from utils.lot_decode import decode_dht11_message,decode_nt1b_message
+from utils.lot_decode import temperature_humidity2json,decode_bdlot_msg
 import logging
 import requests
 from config import config
 from urllib.parse import parse_qs, urlparse
+from api.bdlot import bd_lot_cache
+
+
 # 创建API蓝图
 api_v1 = Blueprint('api_v1', __name__, url_prefix='/api/v1')
 
@@ -165,7 +168,29 @@ def get_farm_info():
 
         return jsonify(error_response), 500
 
-
+@api_v1.route('/bdlot/<tenant_num>/receive', methods=['GET','POST'])
+def receive_baidu_lot_data(tenant_num):
+    """
+    接收百度智能云 lot 数据接口
+    Returns:
+        JSON响应表示服务状态
+    """
+    if request.method == 'GET':
+        qs = bd_lot_cache.set(request.url, request.query_string.decode())
+        print(f'验证字符串: {qs}')
+        return bd_lot_cache.get(request.url)
+    #print(request.get_json())
+    original_data = decode_bdlot_msg(request.get_json())
+    #print(f'original_data: {original_data}')
+    #print(f"传感器数据: {sensor_data}")
+    if type(original_data) == str:
+        return save_weather_info(tenant_num, original_data)
+    sensor_data = original_data['sensor_data']
+    tenant_service.save_baidu_lot_data(tenant_num, sensor_data)
+    return jsonify({
+        'code': 200,
+        'msg': 'ok'
+    }), 200
 
 @api_v1.route('/health', methods=['GET'])
 def health_check():
@@ -267,17 +292,21 @@ def proxy_image(file_token):
 @api_v1.route('/test/devices', methods=['GET', 'POST'])
 def show_test_devices():
     # 打印请求参数 & 请求体等
-    # print(f'请求方法: {request.method}')
-    # print(f'URL参数: {request.args}')
-    # print(f'请求头: {dict(request.headers)}')
-    # print(f'完整URL: {request.url}')
-    # print(f'查询字符串: {request.query_string.decode()}')
+    print(f'请求方法: {request.method}')
+    print(f'URL参数: {request.args}')
+    print(f'请求头: {dict(request.headers)}')
+    print(f'完整URL: {request.url}')
+    print(f'查询字符串: {request.query_string.decode()}')
     
     # 如果是POST请求，打印请求体
-    if request.method == 'POST':
+    if request.method == 'GET':
+        qs = bd_lot_cache.set(request.url, request.query_string.decode())
+        print(f'验证字符串: {qs}')
+        return bd_lot_cache.get(request.url)
+    elif request.method == 'POST':
         #print(f'Content-Type: {request.content_type}')
         if request.is_json:
-            original_data = decode_nt1b_message(request.get_json())
+            original_data = decode_baidu_lot_message(request.get_json())
             sensor_data = original_data['sensor_data']
             print(f"传感器数据: {sensor_data}")
         elif request.form:
@@ -285,70 +314,22 @@ def show_test_devices():
         else:
             print(f'原始数据: {request.get_data().decode()}')
     
-    return 'c05b4392ea4b5d4cd1464ef83be1dba00f30f662c17dc453c96a5794594191a0'
+    return 'ok'
 
-@api_v1.route('/dht/weather', methods=['GET'])
-def baidu_verify():
-    print(f'请求方法: {request.method}')
-    print(f'URL参数: {request.args}')
-    print(f'请求头: {dict(request.headers)}')
-    print(f'完整URL: {request.url}')
-    print(f'查询字符串: {request.query_string.decode()}')
-    return '35b6efa8616e4fbbc3f72e1476e367e139d97ab076a77ab5d1a0f3bcbe15d04b'
-
-import json
-
-# 全局变量用于缓存上次的温湿度数据
-last_humidity_temperature = None
-
-@api_v1.route('/dht/weather', methods=['POST'])
-def show_weather_info():
-    """
-    接受DHT11传感器数据并解码处理
-
-    接收包含base64编码温湿度数据的JSON，解码后返回结构化的温湿度信息
-    如果数据与上次相同则忽略，否则更新飞书表格中的传感器数据
-
-    Returns:
-        JSON响应包含解码后的DHT11传感器数据
-    """
-    global last_humidity_temperature
-    
+last_humidity_temperature_key = 'humidity_temperature'
+def save_weather_info(tenant_num:str, original_data):
     try:
-        data = request.get_json()
-        humidity_temperature = decode_dht11_message(data)
-        data['message'] = humidity_temperature
-        logger.debug(f"解码后的DHT11数据: {json.dumps(data)}")
-        # 获取查询参数
-        tenant_num = request.args.get('num') or 1
+        last_humidity_temperature = bd_lot_cache.getv(last_humidity_temperature_key)
+        if last_humidity_temperature == original_data:
+            return 'ok'
+        humidity_temperature = temperature_humidity2json(original_data)
         # 检查数据是否与上次相同
-        if last_humidity_temperature != humidity_temperature:
-            # 数据有变化，更新飞书表格
-            try:
-                update_result = update_sensor_data_to_feishu(humidity_temperature, tenant_num)
-                if update_result['success']:
-                    logger.info(f"成功更新飞书传感器数据: {humidity_temperature}")
-                    # 更新缓存
-                    last_humidity_temperature = humidity_temperature
-                else:
-                    logger.error(f"更新飞书传感器数据失败: {update_result['message']}")
-            except Exception as feishu_error:
-                logger.error(f"更新飞书数据时发生异常: {str(feishu_error)}")
-        else:
-            logger.debug("温湿度数据与上次相同，跳过更新")
-        
-        return jsonify({
-            'code': 200,
-            'message': data['message'],
-            'data': None
-        }), 200
+        if update_sensor_data_to_feishu(humidity_temperature, tenant_num):
+            bd_lot_cache.setv(last_humidity_temperature_key, original_data)
     except Exception as e:
         logger.error(f"DHT11数据解码失败: {str(e)}")
-        return jsonify({
-            'code': 1,
-            'message': f'数据解码失败: {str(e)}',
-            'data': None
-        }), 400
+    return 'ok'
+       
 
 def update_sensor_data_to_feishu(humidity_temperature, tenant_num):
     """
@@ -362,15 +343,12 @@ def update_sensor_data_to_feishu(humidity_temperature, tenant_num):
     """
     try:
         # 1. 从数据表缓存中获取「传感器」表的所有记录
-        records_result = tenant_service.get_tenant_feishu_service(tenant_num).get_table_records('传感器')
+        feishu_service = tenant_service.get_tenant_feishu_service(tenant_num)
+        records_result = feishu_service.get_table_records('传感器')
         if not records_result['success']:
-            return {
-                'success': False,
-                'message': f"获取传感器表记录失败: {records_result['message']}"
-            }
-        
-        records = records_result['data'].get('items', [])
-        
+            logger.error(f"获取传感器表记录失败: {records_result['message']}")
+            return False
+        records = records_result.get('data',{}).get('items', [])
         # 2. 找到名称为"温度"和"湿度"的记录ID
         temperature_record_id = None
         humidity_record_id = None
@@ -383,11 +361,8 @@ def update_sensor_data_to_feishu(humidity_temperature, tenant_num):
                 humidity_record_id = record.get('record_id')
         
         if not temperature_record_id or not humidity_record_id:
-            return {
-                'success': False,
-                'message': f"未找到温度或湿度记录，温度ID: {temperature_record_id}, 湿度ID: {humidity_record_id}"
-            }
-        
+            logger.error(f"未找到温度或湿度记录，温度ID: {temperature_record_id}, 湿度ID: {humidity_record_id}")
+            return False
         # 3. 准备批量更新的记录数据
         update_records = []
         
@@ -396,7 +371,7 @@ def update_sensor_data_to_feishu(humidity_temperature, tenant_num):
             update_records.append({
                 'record_id': temperature_record_id,
                 'fields': {
-                    '文本': humidity_temperature['temperature']
+                    '数据': humidity_temperature['temperature']
                 }
             })
         
@@ -405,25 +380,18 @@ def update_sensor_data_to_feishu(humidity_temperature, tenant_num):
             update_records.append({
                 'record_id': humidity_record_id,
                 'fields': {
-                    '文本': humidity_temperature['humidity']
+                    '数据': humidity_temperature['humidity']
                 }
             })
         
         if not update_records:
-            return {
-                'success': False,
-                'message': '没有有效的温湿度数据需要更新'
-            }
-        
+            return
         # 4. 调用批量更新接口
         update_result = feishu_service.batch_update_records('传感器', update_records)
-        
-        return update_result
+        return update_result.get('success', False)
         
     except Exception as e:
-        return {
-            'success': False,
-            'message': f'更新传感器数据异常: {str(e)}'
-        }
+        logger.error(f"更新传感器数据异常: {str(e)}")
+        return False
 
 

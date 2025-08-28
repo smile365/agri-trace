@@ -403,6 +403,58 @@ class TenantService:
         except Exception as e:
             logger.error(f"获取租户统计信息失败: {str(e)}")
             return {'total_tenants': 0, 'tenants': []}
+    
+    def save_baidu_lot_data(self, tenant_num: str, sensor_data: Dict[str, Any]):
+        """保存百度智能云 lot 数据（motion）
+        Args:
+            tenant_num: 租户编号
+            sensor_data: 传感器数据： {'type': '1', 'id': '011722001182', 'motion': '3119', 'temp': '23.0', 'alarm': '284'}
+            需要保存 motion（数据）到飞书多维表格的 传感器 表中， id 对应 编号 。
+        """
+        try:
+            # 验证租户是否存在
+            tenant_info = self.cache_service.get_tenant_info(tenant_num)
+            if not tenant_info:
+                logger.error(f"租户不存在: {tenant_num}")
+                return
+            
+            # 保存数据到飞书多维表格
+            tenant_feishu = self.get_tenant_feishu_service(tenant_num)
+            records = tenant_feishu.get_table_records('传感器')
+            if not records['success']:
+                logger.error(f"获取传感器表记录失败: {records['message']}")
+                return
+            # 遍历 records['data']['items']，找到 编号 为 sensor_data['id'] 的记录
+            records_items = records.get('data',{}).get('items', [])
+            target_record_id = None
+            target_record_value = None
+            for record in records_items:
+                fields = record.get('fields', {})
+                device_id = fields.get('编号', '')
+                if device_id == sensor_data['id']:
+                    target_record_value = fields.get('数据')
+                    target_record_id = record.get('record_id')
+                    break
+            
+            # 如果找到，更新记录
+            if not target_record_id or target_record_value == sensor_data['motion']:
+                return
+            update_records = [{
+                'record_id': target_record_id,
+                'fields': {
+                    '数据': sensor_data['motion']
+                }
+            }]
+            # 调用批量更新接口
+            update_result = tenant_feishu.batch_update_records('传感器', update_records)
+            if update_result['success']:
+                logger.info(f"更新传感器 {sensor_data['id']} 的 motion 数据: {sensor_data['motion']} 成功")
+            else:
+                logger.error(f"更新传感器数据失败: {update_result['message']}")
+            #logger.debug(f"成功保存百度智能云 lot 数据到租户 {tenant_num}")
+        except Exception as e:
+            logger.error(f"保存百度智能云 lot 数据失败: {str(e)}")
+
 
 # 全局租户服务实例
 tenant_service = TenantService()
