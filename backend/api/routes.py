@@ -223,7 +223,7 @@ def proxy_image(file_token):
     try:
         logger.debug(f"开始代理图片，文件令牌: {file_token}")
         # 获取查询参数
-        tenant_num = request.args.get('num') or '1'
+        tenant_num = request.args.get('num') or '2'
         # 构建飞书图片下载URL - 使用base-api域名
         feishu_url = f"{config.FEISHU_API_BASE_URL}/open-apis/drive/v1/medias/{file_token}/download"
 
