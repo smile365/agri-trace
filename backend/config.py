@@ -30,7 +30,7 @@ class Config:
     FLASK_ENV = os.environ.get('FLASK_ENV', 'development')
     FLASK_DEBUG = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
     FLASK_HOST = os.environ.get('FLASK_HOST', '0.0.0.0')
-    FLASK_PORT = int(os.environ.get('FLASK_PORT', 5000))
+    FLASK_PORT = int(os.environ.get('FLASK_PORT', 8082))
     
     # 日志配置
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')

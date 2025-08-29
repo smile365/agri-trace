@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>产品溯源系统 - 让每一份信任都有迹可循</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        /* 导航栏 */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            padding: 1rem 0;
+            transition: all 0.3s ease;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2c5aa0;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: #2c5aa0;
+        }
+
+        /* 英雄区域 */
+        .hero {
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="%23ffffff" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>') repeat;
+            opacity: 0.3;
+        }
+
+        .hero-content {
+            max-width: 800px;
+            z-index: 2;
+            position: relative;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hero p {
+            font-size: 1.3rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            background: #ff6b6b;
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+        }
+
+        /* 特色功能区域 */
+        .features {
+            padding: 5rem 0;
+            background: #f8f9fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #2c5aa0;
+            font-weight: 700;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 3rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            border: 1px solid #e9ecef;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            color: white;
+            font-size: 2rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #2c5aa0;
+        }
+
+        .feature-card p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        /* 工作流程 */
+        .workflow {
+            padding: 5rem 0;
+            background: white;
+        }
+
+        .workflow-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .step {
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: #ff6b6b;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 0 auto 1rem;
+        }
+
+        .step h3 {
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+            color: #2c5aa0;
+        }
+
+        .step p {
+            color: #666;
+        }
+
+        /* 统计数据 */
+        .stats {
+            padding: 5rem 0;
+            background: linear-gradient(135deg, #2c5aa0, #667eea);
+            color: white;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .stat-item {
+            padding: 1rem;
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: #ff6b6b;
+        }
+
+        .stat-label {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        /* 优势展示 */
+        .advantages {
+            padding: 5rem 0;
+            background: #f8f9fa;
+        }
+
+        .advantages-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 3rem;
+            margin-top: 3rem;
+        }
+
+        .advantage-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+        }
+
+        .advantage-icon {
+            width: 60px;
+            height: 60px;
+            background: #ff6b6b;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .advantage-content h3 {
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+            color: #2c5aa0;
+        }
+
+        .advantage-content p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        /* 底部 */
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 3rem 0 1rem;
+            text-align: center;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-section h3 {
+            margin-bottom: 1rem;
+            color: #ff6b6b;
+        }
+
+        .footer-section p,
+        .footer-section a {
+            color: #bdc3c7;
+            text-decoration: none;
+            line-height: 1.6;
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid #34495e;
+            padding-top: 1rem;
+            color: #95a5a6;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero p {
+                font-size: 1.1rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            .features-grid,
+            .workflow-steps,
+            .stats-grid,
+            .advantages-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 动画效果 */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-on-scroll {
+            opacity: 0;
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        /* 浮动动画 */
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="fas fa-leaf"></i> 溯源系统
+            </div>
+            <ul class="nav-links">
+                <li><a href="#home">首页</a></li>
+                <li><a href="#features">功能特色</a></li>
+                <li><a href="#workflow">工作流程</a></li>
+                <li><a href="#advantages">核心优势</a></li>
+                <li><a href="#contact">联系我们</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- 英雄区域 -->
+    <section id="home" class="hero">
+        <div class="hero-content">
+            <h1 class="floating">产品溯源系统</h1>
+            <p>让每一份信任都有迹可循，用科技守护食品安全</p>
+            <a href="#features" class="cta-button">
+                <i class="fas fa-rocket"></i> 立即体验
+            </a>
+        </div>
+    </section>
+
+    <!-- 功能特色 -->
+    <section id="features" class="features">
+        <div class="container">
+            <h2 class="section-title">核心功能</h2>
+            <p class="section-subtitle">全链路追溯，让每个环节都透明可见</p>
+            
+            <div class="features-grid">
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">
+                        <i class="fas fa-qrcode"></i>
+                    </div>
+                    <h3>一物一码</h3>
+                    <p>每个产品都有独特的二维码标识，扫码即可查看完整溯源信息，防伪防窜货</p>
+                </div>
+                
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">
+                        <i class="fas fa-video"></i>
+                    </div>
+                    <h3>实时监控</h3>
+                    <p>24小时实时视频监控，记录生产全过程，让消费者亲眼见证产品品质</p>
+                </div>
+                
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>数据追踪</h3>
+                    <p>全程数据记录，包括环境参数、操作记录、检测报告等关键信息</p>
+                </div>
+                
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>安全保障</h3>
+                    <p>区块链技术保证数据不可篡改，多重验证确保信息真实可靠</p>
+                </div>
+                
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h3>移动便捷</h3>
+                    <p>支持手机扫码查询，界面友好，操作简单，随时随地了解产品信息</p>
+                </div>
+                
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>多方协作</h3>
+                    <p>支持生产商、经销商、监管部门等多方参与，构建完整的信任体系</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 工作流程 -->
+    <section id="workflow" class="workflow">
+        <div class="container">
+            <h2 class="section-title">工作流程</h2>
+            <p class="section-subtitle">简单四步，轻松实现全链路溯源</p>
+            
+            <div class="workflow-steps">
+                <div class="step animate-on-scroll">
+                    <div class="step-number">1</div>
+                    <h3>产品注册</h3>
+                    <p>在系统中注册产品信息，生成唯一溯源码</p>
+                </div>
+                
+                <div class="step animate-on-scroll">
+                    <div class="step-number">2</div>
+                    <h3>过程记录</h3>
+                    <p>记录生产、加工、运输等各环节关键信息</p>
+                </div>
+                
+                <div class="step animate-on-scroll">
+                    <div class="step-number">3</div>
+                    <h3>数据上链</h3>
+                    <p>将溯源数据加密存储到区块链，确保不可篡改</p>
+                </div>
+                
+                <div class="step animate-on-scroll">
+                    <div class="step-number">4</div>
+                    <h3>消费查询</h3>
+                    <p>消费者扫码即可查看完整的产品溯源信息</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 统计数据 -->
+    <section class="stats">
+        <div class="container">
+            <h2 class="section-title">平台数据</h2>
+            <p class="section-subtitle">用数字见证我们的专业与可靠</p>
+            
+            <div class="stats-grid">
+                <div class="stat-item animate-on-scroll">
+                    <div class="stat-number">100+</div>
+                    <div class="stat-label">注册企业</div>
+                </div>
+                
+                <div class="stat-item animate-on-scroll">
+                    <div class="stat-number">1万+</div>
+                    <div class="stat-label">溯源产品</div>
+                </div>
+                
+                <div class="stat-item animate-on-scroll">
+                    <div class="stat-number">1百万+</div>
+                    <div class="stat-label">查询次数</div>
+                </div>
+                
+                <div class="stat-item animate-on-scroll">
+                    <div class="stat-number">99.9%</div>
+                    <div class="stat-label">系统可用性</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 核心优势 -->
+    <section id="advantages" class="advantages">
+        <div class="container">
+            <h2 class="section-title">核心优势</h2>
+            <p class="section-subtitle">为什么选择我们的溯源系统</p>
+            
+            <div class="advantages-grid">
+                <div class="advantage-item animate-on-scroll">
+                    <div class="advantage-icon">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <div class="advantage-content">
+                        <h3>快速部署</h3>
+                        <p>标准化解决方案，最快3天完成系统部署，快速上线投入使用，降低时间成本。</p>
+                    </div>
+                </div>
+                
+                <div class="advantage-item animate-on-scroll">
+                    <div class="advantage-icon">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <div class="advantage-content">
+                        <h3>灵活定制</h3>
+                        <p>支持个性化定制开发，满足不同行业、不同规模企业的特殊需求。</p>
+                    </div>
+                </div>
+                
+                <div class="advantage-item animate-on-scroll">
+                    <div class="advantage-icon">
+                        <i class="fas fa-cloud"></i>
+                    </div>
+                    <div class="advantage-content">
+                        <h3>云端部署</h3>
+                        <p>基于云计算架构，支持弹性扩容，无需担心硬件投入和运维成本。</p>
+                    </div>
+                </div>
+                
+                <div class="advantage-item animate-on-scroll">
+                    <div class="advantage-icon">
+                        <i class="fas fa-headset"></i>
+                    </div>
+                    <div class="advantage-content">
+                        <h3>专业服务</h3>
+                        <p>7×24小时技术支持，专业团队提供培训指导，确保系统稳定运行。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 底部 -->
+    <footer id="contact" class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>关于我们</h3>
+                    <p>专注于产品溯源技术研发，致力于用科技手段保障食品安全，建立消费者与生产者之间的信任桥梁。</p>
+                </div>
+                
+                <div class="footer-section">
+                    <h3>联系方式</h3>
+                    <p>邮箱： 931918906@qq.com</p>
+                    <p>地址：昆明经开区浦发路31号工业厂房6栋4层F408室</p>
+                </div>
+                
+                <div class="footer-section">
+                    <h3>快速链接</h3>
+                    <p><a href="#features">功能特色</a></p>
+                    <p><a href="#workflow">工作流程</a></p>
+                    <p><a href="#advantages">核心优势</a></p>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2025 产品溯源系统. 保留所有权利.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // 平滑滚动
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // 导航栏滚动效果
+        window.addEventListener('scroll', function() {
+            const navbar = document.querySelector('.navbar');
+            if (window.scrollY > 100) {
+                navbar.style.background = 'rgba(255, 255, 255, 0.98)';
+                navbar.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
+            } else {
+                navbar.style.background = 'rgba(255, 255, 255, 0.95)';
+                navbar.style.boxShadow = 'none';
+            }
+        });
+
+        // 滚动动画
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // 观察所有需要动画的元素
+        document.querySelectorAll('.animate-on-scroll').forEach(el => {
+            observer.observe(el);
+        });
+
+        // 数字动画
+        function animateNumbers() {
+            const numbers = document.querySelectorAll('.stat-number');
+            numbers.forEach(number => {
+                const target = parseInt(number.textContent.replace(/[^0-9]/g, ''));
+                const suffix = number.textContent.replace(/[0-9,]/g, '');
+                let current = 0;
+                const increment = target / 100;
+                const timer = setInterval(() => {
+                    current += increment;
+                    if (current >= target) {
+                        current = target;
+                        clearInterval(timer);
+                    }
+                    if (target >= 1000000) {
+                        number.textContent = (current / 1000000).toFixed(1) + '万' + suffix;
+                    } else if (target >= 1000) {
+                        number.textContent = (current / 1000).toFixed(1) + 'k' + suffix;
+                    } else {
+                        number.textContent = Math.floor(current) + suffix;
+                    }
+                }, 20);
+            });
+        }
+
+        // 当统计区域进入视口时开始数字动画
+        const statsSection = document.querySelector('.stats');
+        const statsObserver = new IntersectionObserver(function(entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    animateNumbers();
+                    statsObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.5 });
+
+        statsObserver.observe(statsSection);
+    </script>
+</body>
+</html>

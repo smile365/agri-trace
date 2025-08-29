@@ -38,3 +38,5 @@ flake8==6.1.0
 # 生产环境
 gunicorn==21.2.0
 gevent==23.7.0
+schedule
+redislite

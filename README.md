@@ -4,18 +4,12 @@
 
 ## todo：待办任务
 系统管理
-- [ ] 权限管理：
-  - [ ] 授权列表：存储每个养殖企业的app_token、授权码、授权农户数量。
-  - [ ] 防止其他人对推流服务进行恶意调用，推流服务鉴权。
 - [ ] 图片压缩服务
-- [ ] sqlite 缓存
 - [ ] 图片可点击放大
 - [ ] 多张图片可切换
 - [ ] 图片压缩后显示
-- [ ] 支持时间相关的格式化（使用缓存）。
 - [ ] 步数模拟：模拟其他农户的步数变化。
 - [ ] 打包可运行的程序，部署上线。
-- [ ] 客户培训：相关使用文档编写。
 
 ## 技术栈
 
@@ -75,7 +69,6 @@ rsync -avz --exclude-from='.gitignore' \
   --exclude='tests/' \
   --exclude='.git/' \
   --exclude='.gitignore' \
-  --exclude='README.md' \
   --exclude='*.md' \
   ./ pxact:/root/projects/farm/
 
@@ -108,7 +101,8 @@ cd backend && python app.py
 
 后台运行：
 ```bash
-nohup cd backend && python app.py > app.log 2>&1 &
+# nohup cd backend && python app.py > app.log 2>&1 &
+cd backend && nohup python app.py > app.log 2>&1 &
 ```
 
 ### 远程调试技巧

@@ -36,26 +36,10 @@ def create_app():
     # 初始化多租户系统
     init_multi_tenant_system(app)
     
-    # 根路径 - API文档
+    # 根路径 - 宣传单页
     @app.route('/')
     def api_index():
-        return jsonify({
-            'message': '农产品溯源系统API',
-            'version': '1.0.0',
-            'endpoints': {
-                'products': '/api/v1/products',
-                'product_detail': '/api/v1/product/{id}',
-                'farm_tables': '/api/v1/farm/tables?product_id={id}',
-                'farm_info': '/api/v1/farm/info?product_id={id}',
-                'table_fields': '/api/v1/farm/table/fields?product_id={id}&tname={table_name}',
-                'image_proxy': '/api/v1/img/{file_token}',
-                'health': '/api/v1/health'
-            },
-            'frontend': {
-                'page': '/index.html?id={product_id}',
-                'test': '/test.html'
-            }
-        })
+        return render_template('landing.html')
 
     # 前端页面路由
     @app.route('/index.html')
