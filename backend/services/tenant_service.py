@@ -38,7 +38,7 @@ class TenantService:
         self.system_table_name = getattr(config, 'SYSTEM_TABLE_NAME', '授权列表')
         
         # 缓存更新间隔（分钟）
-        self.cache_update_interval = getattr(config, 'CACHE_UPDATE_INTERVAL', 5)
+        self.cache_update_interval = getattr(config, 'CACHE_UPDATE_INTERVAL', 60)
         
         logger.info("多租户管理服务初始化完成")
     

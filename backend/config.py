@@ -22,8 +22,8 @@ class Config:
     SYS_PERSONAL_BASE_TOKEN = os.environ.get('SYS_PERSONAL_BASE_TOKEN')
     SYSTEM_TABLE_NAME = os.environ.get('SYSTEM_TABLE_NAME', '授权列表')
     
-    # 缓存更新配置
-    CACHE_UPDATE_INTERVAL = int(os.environ.get('CACHE_UPDATE_INTERVAL', 5))
+    # 缓存更新配置 分钟
+    CACHE_UPDATE_INTERVAL = int(os.environ.get('CACHE_UPDATE_INTERVAL', 60))
     REDIS_DB_PATH = os.environ.get('REDIS_DB_PATH', 'cache.db')
     
     # Flask应用配置
