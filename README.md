@@ -110,5 +110,5 @@ cd backend && nohup python app.py > app.log 2>&1 &
 使用 ssh 隧道
 ```bash
 # 本地端口转发
-ssh -L 5000:localhost:5000 pxact
+ssh -L 8082:localhost:8080 pxact
 ```

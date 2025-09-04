@@ -6,6 +6,7 @@
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import traceback
 
 import time
 import threading
@@ -17,6 +18,8 @@ import logging
 from config import config
 from services.cache_service import cache_service
 from services.feishu_service import FeishuService
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -368,6 +371,7 @@ class TenantService:
             
         except Exception as e:
             logger.error(f"获取租户农户信息异常 {tenant_num}/{farmer_id}: {str(e)}")
+            traceback.print_exc()
             return {
                 'success': False,
                 'message': f'获取农户信息失败: {str(e)}',

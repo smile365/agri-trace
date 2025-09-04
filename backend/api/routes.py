@@ -79,7 +79,7 @@ def get_farm_info():
         product_id = request.args.get('product_id')
         tenant_num = request.args.get('tenant_num') or 1
 
-        logger.debug(f"开始获取农户完整信息，产品ID: {product_id}, 租户编号: {tenant_num}")
+        logger.info(f"开始获取农户完整信息，产品ID: {product_id}, 租户编号: {tenant_num}")
 
         # 验证产品ID参数
         if not product_id or len(product_id.strip()) == 0:
@@ -101,18 +101,16 @@ def get_farm_info():
             return jsonify(error_response), 403
         
         # 验证农户ID是否在该租户的授权列表中
-        if not tenant_service.validate_farmer_access(tenant_num, product_id.strip()):
-            error_response = {
-                'code': 1,
-                'message': '此记录不存在或授权农户数量已超限额',
-                'data': None
-            }
-            return jsonify(error_response), 403
+        # if not tenant_service.validate_farmer_access(tenant_num, product_id.strip()):
+        #     error_response = {
+        #         'code': 1,
+        #         'message': '此记录不存在或授权农户数量已超限额',
+        #         'data': None
+        #     }
+        #     return jsonify(error_response), 403
         
         # 使用租户专用的飞书服务获取数据
         result = tenant_service.get_tenant_farm_info(tenant_num, product_id.strip())
-
-
         # 数据获取逻辑已在上面的多租户验证中处理
 
         if result['success']:

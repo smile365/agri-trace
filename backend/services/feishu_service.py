@@ -214,82 +214,83 @@ class FeishuService:
         Returns:
             包含农户完整信息的字典
         """
-        try:
-            # 初始化结果数据
-            complete_info = {
-                'sensor': {},
-                'product_info': {},
-                'feeding_records': [],
-                'breeding_process': [],
-                'statistics': {}
-            }
+        
+        # 初始化结果数据
+        complete_info = {
+            'sensor': {},
+            'product_info': {},
+            'feeding_records': [],
+            'breeding_process': [],
+            'statistics': {}
+        }
             
-            # 从「传感器」表获取传感器数据
-            sensor_result = self.get_table_records('传感器')
-            if sensor_result['success']:
-                sensor_records = sensor_result['data'].get('items', [])
+        # 从「传感器」表获取传感器数据
+        sensor_result = self.get_table_records('传感器')
+        if sensor_result['success']:
+            sensor_records = sensor_result.get('data',{}).get('items', [])
+            
+            # 处理传感器数据，将其转换为 {'温度': '26.0', '湿度': '47.0', ...} 格式
+            for record in sensor_records:
+                fields = record.get('fields', {})
+                sensor_name = fields.get('名称', '')
+                sensor_value = fields.get('数据', '') or fields.get('数值', '')
                 
-                # 处理传感器数据，将其转换为 {'温度': '26.0', '湿度': '47.0', ...} 格式
-                for record in sensor_records:
-                    fields = record.get('fields', {})
-                    sensor_name = fields.get('名称', '')
-                    sensor_value = fields.get('文本', '') or fields.get('数值', '')
-                    
-                    if sensor_name and sensor_value:
-                        complete_info['sensor'][sensor_name] = str(sensor_value)
-            
-            # 使用「根据记录ID查询记录详情」接口获取农户信息
-            farmer_result = self.get_record_by_id('农户管理', product_id)
-            complete_info['product_info'] = farmer_result['data']
-            farmer_name = complete_info['product_info'].get('饲养农户', '')
-            # 从「饲喂记录」表获取饲喂记录
-            filter_str = f'CurrentValue.[农户]="{farmer_name}"'
-            feeding_result = self.get_table_records_filter('饲喂记录',filter_str)
-            #print(f'饲喂记录:{feeding_result}')
-            if feeding_result['data']:
-                feeding_records = feeding_result['data']
-                complete_info['statistics']['feeding_count'] = len(feeding_records)
-                for record in feeding_records:
-                    feeding_record = {
-                        'food_name': record.get('食物', ''),
-                        'operator': record.get('操作人', ''),
-                        'operation_time': record.get('操作时间'),
-                        'images': record.get('图片', []),
-                        'created_time': record.get('创建'),
-                        'updated_time': record.get('更新')
-                    }
-                    complete_info['feeding_records'].append(feeding_record)
-            
-            # 从「养殖流程」表获取养殖流程
-            breeding_result = self.get_table_records_filter('养殖流程',filter_str)
-            if breeding_result['success']:
-                breeding_records = breeding_result['data']
-                complete_info['statistics']['process_count'] = len(breeding_records)
-                # 处理养殖流程
-                for fields in breeding_records:
-                    process_record = {
-                        'process_name': fields.get('流程', ''),
-                        'operation_time': fields.get('操作时间'),
-                        'created_time': fields.get('创建'),
-                        'updated_time': fields.get('更新'),
-                        'images': fields.get('图片', []),
-                        'operator': fields.get('操作人', '')
-                    }
-                    complete_info['breeding_process'].append(process_record)
-            
-            
-            return {
-                'success': True,
-                'data': complete_info,
-                'message': 'success'
-            }
-            
-        except Exception as e:
+                if sensor_name and sensor_value:
+                    complete_info['sensor'][sensor_name] = str(sensor_value)
+        
+        # 使用「根据记录ID查询记录详情」接口获取农户信息
+        farmer_result = self.get_record_by_id('农户管理', product_id)
+        if not farmer_result.get('data'):
             return {
                 'success': False,
                 'data': None,
-                'message': f'获取农户完整信息失败: {str(e)}'
+                'message': f'未找到记录ID为 {product_id} 的农户信息'
             }
+        complete_info['product_info'] = farmer_result['data']
+        farmer_name = complete_info['product_info'].get('饲养农户', '')
+        # 从「饲喂记录」表获取饲喂记录
+        filter_str = f'CurrentValue.[农户]="{farmer_name}"'
+        feeding_result = self.get_table_records_filter('饲喂记录',filter_str)
+        #print(f'饲喂记录:{feeding_result}')
+        if feeding_result['data']:
+            feeding_records = feeding_result['data']
+            complete_info['statistics']['feeding_count'] = len(feeding_records)
+            for record in feeding_records:
+                feeding_record = {
+                    'food_name': record.get('食物', ''),
+                    'operator': record.get('操作人', ''),
+                    'operation_time': record.get('操作时间'),
+                    'images': record.get('图片', []),
+                    'created_time': record.get('创建'),
+                    'updated_time': record.get('更新')
+                }
+                complete_info['feeding_records'].append(feeding_record)
+            
+        # 从「养殖流程」表获取养殖流程
+        breeding_result = self.get_table_records_filter('养殖流程',filter_str)
+        if breeding_result['success']:
+            breeding_records = breeding_result['data']
+            complete_info['statistics']['process_count'] = len(breeding_records)
+            # 处理养殖流程
+            for fields in breeding_records:
+                process_record = {
+                    'process_name': fields.get('流程', ''),
+                    'operation_time': fields.get('操作时间'),
+                    'created_time': fields.get('创建'),
+                    'updated_time': fields.get('更新'),
+                    'images': fields.get('图片', []),
+                    'operator': fields.get('操作人', '')
+                }
+                complete_info['breeding_process'].append(process_record)
+        
+        
+        return {
+            'success': True,
+            'data': complete_info,
+            'message': 'success'
+        }
+            
+
 
     def batch_update_records(self, table_name: str, records: List[Dict]) -> Dict:
         """批量更新多条记录
@@ -362,7 +363,6 @@ class FeishuService:
         if not table_id:
             return {
                 'success': False,
-                'data': None,
                 'message': f'未找到表名为 {table_name} 的数据表'
             }
             
@@ -373,6 +373,9 @@ class FeishuService:
             response.raise_for_status()
             data = response.json()
             if not data.get('code') == 0 or not data.get('data'):
+                logger.info(data)
+                logger.info(f'url:{url}')
+                logger.info(self._get_headers())
                 return data
             table_time_formater = self.time_format_cache.get(table_name)
             table_attachment_fields = self.attachment_fields_cache.get(table_name)
@@ -386,6 +389,7 @@ class FeishuService:
 
                 
         except requests.exceptions.RequestException as e:
+            
             return {
                 'success': False,
                 'data': None,
