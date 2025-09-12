@@ -131,10 +131,7 @@ def get_farm_info():
                     parts = rtmp_url.split('?')[0].split('/')
                     if len(parts) > 3:
                         stream_id = parts[-1]
-                        product_info['监控地址'] = f"http://srs.pxact.com/live/{stream_id}.flv"
-                    else:
-                        # 如果无法解析，使用默认地址
-                        product_info['监控地址'] = "http://srs.pxact.com/live/recuu78lxajroy.flv"
+                        product_info['监控地址'] = f"https://srs.pxact.com/live/{stream_id}.flv"
             
             # 简化统计信息
             statistics = data.get('statistics')
