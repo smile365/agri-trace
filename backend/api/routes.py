@@ -124,14 +124,14 @@ def get_farm_info():
             
             # 修改监控地址格式
             if '监控地址' in product_info and product_info['监控地址'] and isinstance(product_info['监控地址'], list) and len(product_info['监控地址']) > 0:
-                    # 将 rtmp 协议改为 http，链接末尾增加 .flv
+                    # 将 rtmp 协议改为 http，链接末尾增加 .m3u8
                     rtmp_url = product_info['监控地址'][0]['text']
                     logger.info(f"原始监控地址: {rtmp_url}")
                     # 提取 rtmp 地址中的流标识符
                     parts = rtmp_url.split('?')[0].split('/')
                     if len(parts) > 3:
                         stream_id = parts[-1]
-                        product_info['监控地址'] = f"https://srs.pxact.com/live/{stream_id}.flv"
+                        product_info['监控地址'] = f"https://srs.pxact.com/live/{stream_id}{config.VIDEO_SUFFIX}"
             
             # 简化统计信息
             statistics = data.get('statistics')

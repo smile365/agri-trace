@@ -44,6 +44,8 @@ class Config:
     
     # 安全配置
     SECRET_KEY = os.environ.get('SECRET_KEY', 'default_secret_key')
+    # 视频后缀
+    VIDEO_SUFFIX = os.environ.get('VIDEO_SUFFIX', '.m3u8')
     
     @classmethod
     def validate(cls):
