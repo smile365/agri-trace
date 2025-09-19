@@ -200,13 +200,14 @@
             <!-- 喂养记录将通过JavaScript动态添加 -->
         </div>
     </div>
-    <script src="../static/js/mpegts.js"></script>
+    <script src="../static/js/hls-1.4.14.min.js"></script>
     <script>
         // 全局变量
         let VIDEO_URL_TEST = 'https://srs.pxact.com/live/vbld6mb2kh.m3u8';
         let farmData = {};
         let productId = null;
         let tenantNum = null;
+        let hlsPlayer = null;
         
         // 页面加载完成后执行
         document.addEventListener('DOMContentLoaded', function() {
@@ -222,69 +223,110 @@
             loadData();
             // 添加事件监听
             setupEventListeners();
-           
         }
         
-        function initPlayer(flvUrl) {
-            let player = null;  
-            console.log('initPlayer', flvUrl);
-            if (mpegts.getFeatureList().mseLivePlayback) {
-                var videoElement = document.getElementsByTagName('video')[0];
-                player = mpegts.createPlayer({
-                    type: 'flv', 
-                    url: flvUrl,
-                    isLive: true, 
-                    enableStashBuffer: false, 
-                    liveSync: true
-                });
-                player.attachMediaElement(videoElement);
-                player.load();
-                // 获取播放/暂停按钮元素
-                const playPauseButton = document.getElementById('playPauseButton');
-                const playIcon = document.getElementById('playIcon');
-                const pauseIcon = document.getElementById('pauseIcon');
-                let isPlaying = false;
-                
-                // 鼠标悬停显示播放/暂停按钮
-                const videoPlayer = document.getElementById('videoPlayer');
-                videoPlayer.addEventListener('mouseenter', () => {
-                    playPauseButton.style.display = 'flex';
-                });
-                
-                videoPlayer.addEventListener('mouseleave', () => {
-                    playPauseButton.style.display = 'none';
+        function initPlayer(m3u8Url) {
+            console.log('initPlayer', m3u8Url);
+            const videoElement = document.getElementById('videoElement');
+            
+            // 如果已存在播放器实例，先销毁
+            if (hlsPlayer) {
+                hlsPlayer.destroy();
+                hlsPlayer = null;
+            }
+            
+            // 检查浏览器是否原生支持HLS
+            if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                // 某些浏览器（如Safari）原生支持HLS
+                videoElement.src = m3u8Url;
+            } else if (Hls.isSupported()) {
+                // 使用hls.js播放m3u8
+                hlsPlayer = new Hls();
+                hlsPlayer.loadSource(m3u8Url);
+                hlsPlayer.attachMedia(videoElement);
+                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
+                    // 自动播放
+                    videoElement.play().catch(e => {
+                        console.log('自动播放失败，可能需要用户交互:', e);
+                    });
                 });
                 
-                // 获取焦点时显示播放/暂停按钮
-                videoElement.addEventListener('focus', () => {
-                    playPauseButton.style.display = 'flex';
-                });
-                
-                videoElement.addEventListener('blur', () => {
-                    playPauseButton.style.display = 'none';
-                });
-                
-                
-                // 点击按钮播放/暂停
-                playPauseButton.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    togglePlayPause();
-                });
-                
-                // 播放/暂停切换函数
-                function togglePlayPause() {
-                    if (player) {
-                        if (isPlaying) {
-                            player.pause();
-                            playIcon.style.display = 'block';
-                            pauseIcon.style.display = 'none';
-                        } else {
-                            player.play();
-                            playIcon.style.display = 'none';
-                            pauseIcon.style.display = 'block';
+                hlsPlayer.on(Hls.Events.ERROR, function(event, data) {
+                    if (data.fatal) {
+                        switch(data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                console.log('网络错误，尝试恢复...');
+                                hlsPlayer.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                console.log('媒体错误，尝试恢复...');
+                                hlsPlayer.recoverMediaError();
+                                break;
+                            default:
+                                console.error('无法恢复的错误:', data);
+                                hlsPlayer.destroy();
+                                break;
                         }
-                        isPlaying = !isPlaying;
                     }
+                });
+            } else {
+                console.error('当前浏览器不支持HLS播放');
+                return;
+            }
+            
+            // 获取播放/暂停按钮元素
+            const playPauseButton = document.getElementById('playPauseButton');
+            const playIcon = document.getElementById('playIcon');
+            const pauseIcon = document.getElementById('pauseIcon');
+            let isPlaying = false;
+            
+            // 视频开始播放时更新状态
+            videoElement.addEventListener('playing', () => {
+                isPlaying = true;
+                playIcon.style.display = 'none';
+                pauseIcon.style.display = 'block';
+            });
+            
+            // 视频暂停时更新状态
+            videoElement.addEventListener('pause', () => {
+                isPlaying = false;
+                playIcon.style.display = 'block';
+                pauseIcon.style.display = 'none';
+            });
+            
+            // 鼠标悬停显示播放/暂停按钮
+            const videoPlayer = document.getElementById('videoPlayer');
+            videoPlayer.addEventListener('mouseenter', () => {
+                playPauseButton.style.display = 'flex';
+            });
+            
+            videoPlayer.addEventListener('mouseleave', () => {
+                playPauseButton.style.display = 'none';
+            });
+            
+            // 获取焦点时显示播放/暂停按钮
+            videoElement.addEventListener('focus', () => {
+                playPauseButton.style.display = 'flex';
+            });
+            
+            videoElement.addEventListener('blur', () => {
+                playPauseButton.style.display = 'none';
+            });
+            
+            // 点击按钮播放/暂停
+            playPauseButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                togglePlayPause();
+            });
+            
+            // 播放/暂停切换函数
+            function togglePlayPause() {
+                if (isPlaying) {
+                    videoElement.pause();
+                } else {
+                    videoElement.play().catch(e => {
+                        console.log('播放失败:', e);
+                    });
                 }
             }
         }
@@ -376,8 +418,8 @@
                 
                 // 更新监控地址
                 if (farmData.product_info.监控地址) {
-                    FLV_URL = farmData.product_info.监控地址.trim();
-                    initPlayer(FLV_URL);
+                    const videoUrl = farmData.product_info.监控地址.trim();
+                    initPlayer(videoUrl);
                 }
             }
         }
