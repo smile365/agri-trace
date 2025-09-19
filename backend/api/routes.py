@@ -124,7 +124,7 @@ def get_farm_info():
             
             # 修改监控地址格式
             if '监控地址' in product_info and product_info['监控地址'] and isinstance(product_info['监控地址'], list) and len(product_info['监控地址']) > 0:
-                    # 将 rtmp 协议改为 http，链接末尾增加 .m3u8
+                    # 将 rtmp 协议改为 http，链接末尾增加 .m3u8  示例： https://srs.pxact.com/live/vbld6mb2kh.m3u8
                     rtmp_url = product_info['监控地址'][0]['text']
                     logger.info(f"原始监控地址: {rtmp_url}")
                     # 提取 rtmp 地址中的流标识符
