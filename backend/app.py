@@ -35,26 +35,12 @@ def create_app():
     
     # 初始化多租户系统
     init_multi_tenant_system(app)
-    
-    # 根路径 - 宣传单页
-    @app.route('/')
-    def api_index():
-        return render_template('landing.html')
 
     # 前端页面路由
-    @app.route('/index.html')
-    def frontend_page():
-        return render_template('index.html')
+    @app.route('/<path:filename>.html')
+    def html_page(filename):
+        return render_template(f'{filename}.html')
 
-    # 测试页面路由
-    @app.route('/test.html')
-    def test_page():
-        return send_from_directory(app.template_folder, 'test.html')
-
-    # 图片测试页面路由
-    @app.route('/image-test.html')
-    def image_test_page():
-        return send_from_directory(app.template_folder, 'image-test.html')
 
     # 静态文件路由
     @app.route('/static/<path:filename>')

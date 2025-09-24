@@ -135,6 +135,7 @@
             <div class="monitor-section" >
                 <div class="player" id="videoPlayer">
                     <video id="videoElement" autoplay class="monitor-image">
+                        <source src="https://srs.pxact.com/live/vbld6mb2kh.m3u8">
                     </video>
                     <div id="playPauseButton" class="play-pause-button" style="display: none;">
                         <i class="fas fa-play" id="playIcon" ></i>
@@ -200,10 +201,9 @@
             <!-- 喂养记录将通过JavaScript动态添加 -->
         </div>
     </div>
-    <script src="../static/js/hls-1.4.14.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
         // 全局变量
-        let VIDEO_URL_TEST = 'https://srs.pxact.com/live/vbld6mb2kh.m3u8';
         let farmData = {};
         let productId = null;
         let tenantNum = null;
@@ -236,40 +236,21 @@
             }
             
             // 检查浏览器是否原生支持HLS
-            if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-                // 某些浏览器（如Safari）原生支持HLS
-                videoElement.src = m3u8Url;
-            } else if (Hls.isSupported()) {
+            if (Hls.isSupported()) {
                 // 使用hls.js播放m3u8
-                hlsPlayer = new Hls();
+                const hlsPlayer = new Hls();
                 hlsPlayer.loadSource(m3u8Url);
                 hlsPlayer.attachMedia(videoElement);
                 hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
-                    // 自动播放
-                    videoElement.play().catch(e => {
-                        console.log('自动播放失败，可能需要用户交互:', e);
-                    });
+                    videoElement.play();
                 });
-                
-                hlsPlayer.on(Hls.Events.ERROR, function(event, data) {
-                    if (data.fatal) {
-                        switch(data.type) {
-                            case Hls.ErrorTypes.NETWORK_ERROR:
-                                console.log('网络错误，尝试恢复...');
-                                hlsPlayer.startLoad();
-                                break;
-                            case Hls.ErrorTypes.MEDIA_ERROR:
-                                console.log('媒体错误，尝试恢复...');
-                                hlsPlayer.recoverMediaError();
-                                break;
-                            default:
-                                console.error('无法恢复的错误:', data);
-                                hlsPlayer.destroy();
-                                break;
-                        }
-                    }
+            } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                // Safari 兼容
+                videoElement.src = m3u8Url;
+                videoElement.addEventListener('loadedmetadata', function() {
+                    videoElement.play();
                 });
-            } else {
+	        } else {
                 console.error('当前浏览器不支持HLS播放');
                 return;
             }

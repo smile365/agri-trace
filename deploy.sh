@@ -4,5 +4,5 @@ rsync -avz --exclude-from='.gitignore' \
   --exclude='.git/' \
   --exclude='.gitignore' \
   --exclude='*.md' \
-  --exclude='*.sh' \
+  --include='./start.sh' \
   ./ pxact:/root/projects/farm/
