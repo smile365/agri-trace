@@ -145,7 +145,7 @@ class FeishuService:
                 'message': f'请求失败: {str(e)}'
             }
     
-    def get_table_records_filter(self, table_name: str, filter: str) -> Dict:
+    def get_table_records_filter(self, table_name: str, filter: str,sort='["更新 ASC"]') -> Dict:
         """获取指定表名的记录（带过滤条件）
         
         Args:
@@ -164,7 +164,7 @@ class FeishuService:
                 'message': f'未找到表名为 {table_name} 的数据表'
             }
             
-        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records?filter={filter}"
+        url = f"{self.base_url}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records?filter={filter}&sort={sort}"
         
         try:
             response = requests.get(url, headers=self._get_headers())
