@@ -34,11 +34,14 @@ def live_callback():
     data = request.json
     logger.info(f'live_callback request data: {data}')
     if not data:
+        logger.info('live_callback missing json body')
         return jsonify({'code': 400, 'msg': '缺少参数'}), 400
     if data.get('action') != 'on_publish':
+        logger.info('live_callback non on_publish action')
         return jsonify({'code': 0, 'msg': 'ok'}), 200
     param = data.get('param')
     if not param:
+        logger.info('live_callback missing param')
         return jsonify({'code': 400, 'msg': '缺少参数'}), 400
     # 从param中提取 product_id 和 tenant_num
     # param格式: '?id=recuU78lxajRoy&num=1'
@@ -50,12 +53,14 @@ def live_callback():
         tenant_num = query_params.get('num', [None])[0]
         
         if not product_id or not tenant_num:
+            logger.info('live_callback missing id or num in param')
             return jsonify({'code': 400, 'msg': '参数格式错误，缺少id或num'}), 400
             
         # 转换tenant_num为整数
         tenant_num = int(tenant_num)
         
     except (ValueError, TypeError) as e:
+        logger.error(f'live_callback param parsing error: {str(e)}')
         return jsonify({'code': 400, 'msg': '参数格式错误'}), 400
     
     if not tenant_service.validate_farmer_access(tenant_num, product_id.strip()):
