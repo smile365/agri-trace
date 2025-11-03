@@ -181,9 +181,8 @@ def receive_baidu_lot_data(tenant_num):
         return bd_lot_cache.get(request.url)
     #print(request.get_json())
     original_data = decode_bdlot_msg(request.get_json())
-    #print(f'original_data: {original_data}')
-    #print(f"传感器数据: {sensor_data}")
     if type(original_data) == str:
+        logger.info(f'温湿度数据: {original_data}')
         return save_weather_info(tenant_num, original_data)
     sensor_data = original_data['sensor_data']
     tenant_service.save_baidu_lot_data(tenant_num, sensor_data)
@@ -289,38 +288,13 @@ def proxy_image(file_token):
             'data': None
         }), 500
 
-@api_v1.route('/test/devices', methods=['GET', 'POST'])
-def show_test_devices():
-    # 打印请求参数 & 请求体等
-    print(f'请求方法: {request.method}')
-    print(f'URL参数: {request.args}')
-    print(f'请求头: {dict(request.headers)}')
-    print(f'完整URL: {request.url}')
-    print(f'查询字符串: {request.query_string.decode()}')
-    
-    # 如果是POST请求，打印请求体
-    if request.method == 'GET':
-        qs = bd_lot_cache.set(request.url, request.query_string.decode())
-        print(f'验证字符串: {qs}')
-        return bd_lot_cache.get(request.url)
-    elif request.method == 'POST':
-        #print(f'Content-Type: {request.content_type}')
-        if request.is_json:
-            original_data = decode_baidu_lot_message(request.get_json())
-            sensor_data = original_data['sensor_data']
-            print(f"传感器数据: {sensor_data}")
-        elif request.form:
-            print(f'表单数据: {request.form}')
-        else:
-            print(f'原始数据: {request.get_data().decode()}')
-    
-    return 'ok'
 
 last_humidity_temperature_key = 'humidity_temperature'
 def save_weather_info(tenant_num:str, original_data):
     try:
-        last_humidity_temperature = bd_lot_cache.getv(last_humidity_temperature_key)
-        if last_humidity_temperature == original_data:
+        last_original_data = bd_lot_cache.getv(last_humidity_temperature_key)
+        if last_original_data == original_data:
+            logger.info('温湿度数据与上次相同，跳过更新')
             return 'ok'
         humidity_temperature = temperature_humidity2json(original_data)
         # 检查数据是否与上次相同
@@ -387,6 +361,7 @@ def update_sensor_data_to_feishu(humidity_temperature, tenant_num):
         if not update_records:
             return
         # 4. 调用批量更新接口
+        logger.info(f"更新传感器数据: {update_records}")
         update_result = feishu_service.batch_update_records('传感器', update_records)
         return update_result.get('success', False)
         

@@ -3,14 +3,16 @@ Flask应用主文件
 """
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 from flask import Flask, jsonify, render_template, send_from_directory
 from flask_cors import CORS
 import logging
+
 from config import config
 from api.routes import api_v1
 from services.tenant_service import tenant_service
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 
 def create_app():
     """创建Flask应用"""
@@ -50,11 +52,7 @@ def create_app():
     # 错误处理
     @app.errorhandler(404)
     def not_found(error):
-        return jsonify({
-            'code': 404,
-            'message': '接口不存在',
-            'data': None
-        }), 404
+        return render_template('landing.html')
     
     @app.errorhandler(500)
     def internal_error(error):
@@ -118,10 +116,9 @@ if __name__ == '__main__':
         
         # 创建应用
         app = create_app()
-
         print(f"启动Flask应用...")
         print(f"访问地址: http://{config.FLASK_HOST}:{config.FLASK_PORT}")
-        print(f"API文档: http://{config.FLASK_HOST}:{config.FLASK_PORT}/api/v1/products")
+        print(f"API文档: http://{config.FLASK_HOST}:{config.FLASK_PORT}/mydocs")
         
         # 启动应用
         app.run(

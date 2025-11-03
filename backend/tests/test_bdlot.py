@@ -1,13 +1,6 @@
-import requests
+import json 
 
-url = "https://base-api.feishu.cn/open-apis/bitable/v1/apps/GXrdbXWcNauYK8s5zdEcK73Snbd/tables"
+json_data = {'version': 'v1', 'messageId': '58736107831678119', 'rulechainId': 'rerau49a99d1sufq9qe1drigd1ykpejs', 'message': 'NTMuMCAyNi45', 'timestamp': 1754727137925, 'source': {'type': 'IOT_CORE', 'iotCoreId': 'adakqct', 'topic': 'WifiDHT/9C9C1F944799/DHT11', 'clientId': 'wifiDHT11-ID0x9C9C1F944799'}}
 
-payload={}
-headers = {
-   'User-Agent': 'Apifox/1.0.0 (https://apifox.com)',
-   'Authorization': 'Bearer pt-Z924DLNmOGFWxHCK8O0emjDLz4Bf9TKxaG9ZtmiZAQAAAUBIFgJAxPSSuE4I'
-}
 
-response = requests.request("GET", url, headers=headers, data=payload)
-
-print(response.text)
+print(json.dumps(json_data, indent=4))
